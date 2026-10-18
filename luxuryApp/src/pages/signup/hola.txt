@@ -1,0 +1,93 @@
+
+    <Box pt={20} minH={'100vh'} bg="gray.100">
+                <Center>
+                    <Card w={{ base: '90%', md: '80%', lg: '60%' }} p={8} mt={8} boxShadow={'xl'}>
+                        <Text fontSize={'3xl'} mb={6} textAlign="center">Registro de Usuario</Text>
+                        
+                        {formError && (
+                            <Alert status="error" mb={4}>
+                                <AlertIcon />
+                                {formError}
+                            </Alert>
+                        )}
+
+                        <form onSubmit={handleSubmit}>
+                            <Flex gap={4} flexWrap="wrap">
+                                {/* Nombre */}
+                                <FormControl flex="1 1 300px">
+                                    <FormLabel>Nombre</FormLabel>
+                                    <Input
+                                        name="name"
+                                        value={formData.name}
+                                        onChange={handleInputChange}
+                                        placeholder="Ej: Juan"
+                                    />
+                                    {validations.name && <AiFillCheckCircle color="green" />}
+                                    {!validations.name && formData.name && (
+                                        <Alert status="error" mt={1} fontSize="sm" p={2}>
+                                            Nombre inválido (debe comenzar con mayúscula)
+                                        </Alert>
+                                    )}
+                                </FormControl>
+
+                                {/* Apellido */}
+                                <FormControl flex="1 1 300px">
+                                    <FormLabel>Apellido</FormLabel>
+                                    <Input
+                                        name="lastName"
+                                        value={formData.lastName}
+                                        onChange={handleInputChange}
+                                        placeholder="Ej: Pérez"
+                                    />
+                                    {validations.lastName && <AiFillCheckCircle color="green" />}
+                                </FormControl>
+
+                                {/* Email */}
+                                <FormControl flex="1 1 300px">
+                                    <FormLabel>Email</FormLabel>
+                                    <Input
+                                        type="email"
+                                        name="email"
+                                        value={formData.email}
+                                        onChange={handleInputChange}
+                                        placeholder="Ej: usuario@email.com"
+                                    />
+                                    {validations.email && <AiFillCheckCircle color="green" />}
+                                </FormControl>
+
+                                {/* Contraseña */}
+                                <FormControl flex="1 1 300px">
+                                    <FormLabel>Contraseña</FormLabel>
+                                    <Input
+                                        type="password"
+                                        name="password"
+                                        value={formData.password}
+                                        onChange={handleInputChange}
+                                        placeholder="Mínimo 8 caracteres"
+                                    />
+                                    {validations.password && <AiFillCheckCircle color="green" />}
+                                    {!validations.password && formData.password && (
+                                        <Alert status="error" mt={1} fontSize="sm" p={2}>
+                                            La contraseña debe contener al menos 8 caracteres, una mayúscula y un número
+                                        </Alert>
+                                    )}
+                                </FormControl>
+
+                                {/* Resto de campos (Cédula, Teléfono, etc.) */}
+                                {/* ... Agrega los demás campos siguiendo el mismo patrón ... */}
+
+                                <Button
+                                    mt={6}
+                                    type="submit"
+                                    colorScheme="blue"
+                                    isLoading={isSubmitting}
+                                    isDisabled={!allFieldsValid || isSubmitting}
+                                    width="full"
+                                >
+                                    Registrarse
+                                </Button>
+                            </Flex>
+                        </form>
+                    </Card>
+                </Center>
+            </Box>

@@ -1,0 +1,6 @@
+La estructura que te propuse se basa en buenas prácticas reconocidas por la comunidad de
+Node.js y Express, extraídas de artículos y guías de proyectos de referencia.
+Está inspirada en arquitecturas limpias (Clean Architecture) y en recomendaciones de 
+expertos para mantener el código modular, mantenible y escalable  
+https://blog.logrocket.com/node-js-project-architecture-best-practices/
+https://github.com/Zwimber/mongoose-style-guide
