@@ -1,5 +1,5 @@
 // Controladores
-import Staff from '../models/staff.js';
+import { prisma } from '../config/db.js';
 import { AppError } from '../utils/AppError.js';
 import { registerUser,
         sendVerificationEmail,
@@ -30,8 +30,11 @@ export const register = async (request, response, next) => {
 
 export const resendVerificationEmail = async (request, response, next) => {
   try {
-    const { email } = request.body;    
-    const user = await Staff.findOne({ email });
+    const { email } = request.body;
+    if (!email) {
+      throw new AppError("El correo es obligatorio", 400);
+    }
+    const user = await prisma.staff.findUnique({ where: { email } });
 
     if (!user) {
       console.log("Usuario no encontrado");

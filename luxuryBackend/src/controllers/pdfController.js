@@ -1,13 +1,16 @@
 import PDFDocument from "pdfkit";
 import fs from "fs";
 import path from "path";
-import Appointment from "../models/appointment.js";
+import { prisma } from "../config/db.js";
 
 export const generateMedicalPDF = async (request, response) => {
   try {
     const { appointmentId } = request.params;
 
-    const appointment = await Appointment.findById(appointmentId).populate("assignedDoctors");
+    const appointment = await prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      include: { assignedDoctors: true },
+    });
 
     if (!appointment) {
       return response.status(404).json({ message: "Cita no encontrada" });
@@ -42,7 +45,7 @@ export const generateMedicalPDF = async (request, response) => {
     doc.fontSize(12).text(`Nombre: ${appointment.firstName} ${appointment.lastName}`);
     doc.text(`CI: ${appointment.ci}`);
     doc.text(`Correo: ${appointment.email}`);
-    doc.text(`Fecha de la cita: ${new Date(appointment.date).toLocaleDateString()}`);
+    doc.text(`Fecha de la cita: ${appointment.date.toLocaleDateString("es-VE", { timeZone: "UTC" })}`);
     doc.text(`Hora: ${appointment.time}`);
     doc.moveDown();
 
@@ -53,7 +56,7 @@ export const generateMedicalPDF = async (request, response) => {
     });
 
     // Doctores que completaron
-    if (appointment.completedBy?.length) {
+    if (Array.isArray(appointment.completedBy) && appointment.completedBy.length) {
       doc.moveDown();
       doc.text("Completado por:");
       appointment.completedBy.forEach((d, index) => {
@@ -66,13 +69,15 @@ export const generateMedicalPDF = async (request, response) => {
     // Esperar que termine de escribirse
     writeStream.on("finish", async () => {
       try {
-        // Guardar path en MongoDB
-        appointment.historialPDF = `/uploads/pdf/${fileName}`;
-        await appointment.save();
+        // Guardar la ruta del PDF en la cita
+        const updated = await prisma.appointment.update({
+          where: { id: appointmentId },
+          data: { historialPDF: `/uploads/pdf/${fileName}` },
+        });
 
         response.status(200).json({
           message: "PDF generado y guardado exitosamente",
-          pdfUrl: appointment.historialPDF,
+          pdfUrl: updated.historialPDF,
         });
       } catch (error) {
         console.error("Error al guardar el PDF en la cita:", error);

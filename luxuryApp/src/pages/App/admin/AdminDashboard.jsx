@@ -17,15 +17,17 @@ import AppointmentsBarChart from "../../../components/admin/BarChart.jsx";
 
 const MotionBox = motion(Box);
 
-// Verifica si una cita es hoy
+// Verifica si una cita es hoy.
+// appt.date llega como "2025-07-29T00:00:00.000Z": comparamos solo el día,
+// porque convertirlo a hora local (UTC-4) lo movería al día anterior.
 const isToday = (dateString) => {
   const today = new Date();
-  const apptDate = new Date(dateString);
-  return (
-    apptDate.getDate() === today.getDate() &&
-    apptDate.getMonth() === today.getMonth() &&
-    apptDate.getFullYear() === today.getFullYear()
-  );
+  const localToday = [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, "0"),
+    String(today.getDate()).padStart(2, "0"),
+  ].join("-");
+  return dateString.slice(0, 10) === localToday;
 };
 
 const AdminDashboard = () => {
@@ -53,9 +55,7 @@ const AdminDashboard = () => {
 
   // doctores activos del dia
   const activeDoctorsToday = useMemo(() => {
-    const doctors = todayAppointments
-      .filter((appt) => appt.assignedDoctor?.name)
-      .map((appt) => appt.assignedDoctor);
+    const doctors = todayAppointments.flatMap((appt) => appt.assignedDoctors ?? []);
 
     return doctors.filter(
       (doctor, index, self) =>
@@ -72,7 +72,7 @@ const AdminDashboard = () => {
 
   appointments.forEach(appt => {
     const date = new Date(appt.date);
-    const key = `${date.getFullYear()}-${date.getMonth() + 1}`; // ej: "2025-7"
+    const key = `${date.getUTCFullYear()}-${date.getUTCMonth() + 1}`; // ej: "2025-7"
 
     if (!stats[key]) stats[key] = 0;
     stats[key]++;
@@ -166,7 +166,7 @@ return (
                   <Stack spacing={3}>
                     {activeDoctorsToday.map((doctor) => (
                       <Box
-                        key={doctor._id}
+                        key={doctor.id}
                         p={3}
                         borderWidth="1px"
                         borderRadius="md"
@@ -206,7 +206,7 @@ return (
             ) : (
               <Stack spacing={4}>
                 {todayAppointments.map((appt) => (
-                  <Box key={appt._id} p={3} borderWidth="1px" rounded="md" >
+                  <Box key={appt.id} p={3} borderWidth="1px" rounded="md" >
                     <Text fontWeight="semibold">
                       {appt.firstName} {appt.lastName}
                     </Text>

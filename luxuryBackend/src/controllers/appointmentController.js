@@ -1,5 +1,5 @@
 // controllers/appointmentController.js
-import Appointment from "../models/appointment.js";
+import { prisma } from "../config/db.js";
 
 // Formatos que envia el formulario de citas
 const DATE_FORMAT = /^\d{4}-\d{2}-\d{2}$/;              // 2025-07-29
@@ -14,15 +14,11 @@ const toMinutes = (time) => {
   return h * 60 + m;
 };
 
-// La fecha "YYYY-MM-DD" se guarda como medianoche UTC; buscamos todo ese dia en UTC
-const dayRange = (date) => {
-  const start = new Date(`${date}T00:00:00.000Z`);
-  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
-  return { $gte: start, $lt: end };
-};
+// La columna "date" solo guarda el dia; "YYYY-MM-DD" se convierte a medianoche UTC
+const toDay = (date) => new Date(`${date}T00:00:00.000Z`);
 
 // Las citas canceladas no ocupan horario
-const ACTIVE_STATUS = { $ne: "cancelada" };
+const ACTIVE_STATUS = { not: "cancelada" };
 
 export const createAppointment = async (request, response) => {
   const { firstName, lastName, ci, email, time } = request.body;
@@ -52,9 +48,9 @@ export const createAppointment = async (request, response) => {
 
   try {
     // Paso 1: Buscar citas activas del mismo día
-    const sameDayAppointments = await Appointment.find({
-      date: dayRange(date),
-      status: ACTIVE_STATUS,
+    const sameDayAppointments = await prisma.appointment.findMany({
+      where: { date: toDay(date), status: ACTIVE_STATUS },
+      select: { time: true },
     });
 
     // Paso 2: Verificar conflictos de horario (±40 minutos)
@@ -68,17 +64,17 @@ export const createAppointment = async (request, response) => {
       });
     }
 
-    const newAppointment = new Appointment({
-      firstName,
-      lastName,
-      ci,
-      email,
-      date,
-      time,
-      status: "pendiente"
+    const newAppointment = await prisma.appointment.create({
+      data: {
+        firstName,
+        lastName,
+        ci,
+        email,
+        date: toDay(date),
+        time,
+        status: "pendiente"
+      }
     });
-
-    await newAppointment.save();
 
     // Notificar por correo al admin y al paciente (opcional)
     // await sendEmailNotification(email, 'Cita solicitada', 'Tu cita ha sido registrada...');
@@ -100,10 +96,10 @@ export const getOccupiedAppointments = async (request, response) => {
   }
 
   try {
-    const appointments = await Appointment.find(
-      { date: dayRange(date), status: ACTIVE_STATUS },
-      "time"
-    );
+    const appointments = await prisma.appointment.findMany({
+      where: { date: toDay(date), status: ACTIVE_STATUS },
+      select: { time: true },
+    });
 
     const occupiedTimes = appointments.map((a) => a.time);
 

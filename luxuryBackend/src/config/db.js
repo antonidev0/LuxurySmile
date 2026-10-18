@@ -1,12 +1,17 @@
-import mongoose from 'mongoose';
-import { MONGO_URI } from '../config.js';
+import { PrismaClient } from '@prisma/client';
+
+// Cliente único de Prisma para toda la app.
+// passwordHash nunca sale en las consultas salvo que se pida explícitamente (login).
+export const prisma = new PrismaClient({
+    omit: { staff: { passwordHash: true } },
+});
 
 export const connectDB = async () => {
     try {
-        await mongoose.connect(MONGO_URI);
-        console.log('Estamos Conectado a MongoDB exitosamente.');
+        await prisma.$connect();
+        console.log('Estamos Conectado a PostgreSQL exitosamente.');
     } catch (error) {
-        console.log('Error al conectar a MongoDB', error.message);
-        process.exit(1); // esto saldra del proceso ni no hay base de datos
+        console.log('Error al conectar a PostgreSQL', error.message);
+        process.exit(1); // esto saldra del proceso si no hay base de datos
     }
 };

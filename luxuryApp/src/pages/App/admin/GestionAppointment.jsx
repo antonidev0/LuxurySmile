@@ -234,7 +234,7 @@ const GestionAppointment = () => {
               <Stack spacing={5}>
                 {filteredAppointments.map((appt) => (
                   <Box
-                    key={appt._id}
+                    key={appt.id}
                     p={4}
                     borderWidth="1px"
                     borderRadius="lg"
@@ -287,7 +287,7 @@ const GestionAppointment = () => {
                         }
 
                         try {
-                          await assignDoctorToAppointment(appt._id, doctorId);
+                          await assignDoctorToAppointment(appt.id, doctorId);
                           toast({
                             title: "Doctor asignado correctamente",
                             status: "success",
@@ -322,7 +322,7 @@ const GestionAppointment = () => {
                       onChange={async (e) => {
                         const newStatus = e.target.value;
                         try {
-                          await updateAppointmentStatus(appt._id, newStatus);
+                          await updateAppointmentStatus(appt.id, newStatus);
                           toast({
                             title: "Estado actualizado",
                             status: "success",
@@ -350,7 +350,7 @@ const GestionAppointment = () => {
                     </Select>
 
                     <MedicalHistoryForm
-                      appointmentId={appt._id}
+                      appointmentId={appt.id}
                       historialPDF={appt.historialPDF}
                       onSuccess={handleSuccess}
                     />

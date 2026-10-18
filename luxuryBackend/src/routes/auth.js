@@ -1,13 +1,13 @@
 // routes/auth.js
 import express from "express";
 import { authenticateJWT } from "../middlewares/authenticateJWT.js";
-import Staff from "../models/staff.js";
+import { prisma } from "../config/db.js";
 
 const router = express.Router();
 
 router.get("/me", authenticateJWT, async (request, response) => {
   try { 
-    const user = await Staff.findById(request.user.id).select("-passwordHash");
+    const user = await prisma.staff.findUnique({ where: { id: request.user.id } });
     if (!user) {
       return response.status(404).json({ message: "Usuario no encontrado" });
     }

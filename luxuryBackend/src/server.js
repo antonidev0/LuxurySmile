@@ -1,8 +1,8 @@
 import app from './app.js'; // Importamos la configuracion principal de la aplicacion Express (rutas, middlewares, etc.).
-import { connectDB } from './config/db.js'; // Importamos la función que conecta con MongoDB.
+import { connectDB } from './config/db.js'; // Importamos la función que conecta con PostgreSQL.
 import dotenv from 'dotenv'; // Importamos dotenv para poder leer las variables de entorno desde el archivo .env .
 dotenv.config(); // Ejecutamos dotenv para que las variables de entorno estén disponibles.
-import { JWT_SECRET, MONGO_URI } from './config.js';
+import { JWT_SECRET, DATABASE_URL } from './config.js';
 
 // Definimos el puerto donde se ejecutara el servidor, tomando primero el valor del .env si existe
 const PORT = process.env.PORT || 3003;
@@ -10,8 +10,8 @@ const PORT = process.env.PORT || 3003;
 // Creo una funcion asincrona para iniciar el servidor;
 const startServer = async () =>{
     // Sin estas variables el login y la base de datos no pueden funcionar
-    if (!JWT_SECRET || !MONGO_URI) {
-        console.error('Faltan variables de entorno: revisa JWT_SECRET y MONGO_URI_TEST/MONGO_URI_PROD en tu .env (ver .env.example).');
+    if (!JWT_SECRET || !DATABASE_URL) {
+        console.error('Faltan variables de entorno: revisa JWT_SECRET y DATABASE_URL en tu .env (ver .env.example).');
         process.exit(1);
     }
     console.log('Iniciando primer proceso, por favor espere.');
