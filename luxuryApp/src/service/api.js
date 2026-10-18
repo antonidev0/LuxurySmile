@@ -2,37 +2,25 @@ import axios from 'axios';
 
 const API = axios.create({
   baseURL: import.meta.env.VITE_BACKEND_URL,
-  withCredentials: true, // necesario para enviar cookies como el refreshToken
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',
   },
 });
 
-// Interceptor para manejar tokens expirados automáticamente
+// Si el token expiró o es inválido, cerramos la sesión local.
+// Solo redirigimos al login si el usuario estaba en una zona privada,
+// para no sacar a un visitante de las páginas públicas.
 API.interceptors.response.use(
   response => response,
-  async error => {
-    const originalRequest = error.config;
+  error => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      delete API.defaults.headers.common.Authorization;
 
-    // Si el error fue por token expirado y no hemos reintentado aún
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        // Intenta renovar el token
-        await axios.post(
-          `${import.meta.env.VITE_BACKEND_URL}/auth/refresh`,
-          {},
-          { withCredentials: true }
-        );
-
-        // Reintenta la petición original
-        return API(originalRequest);
-      } catch (refreshError) {
-        // Si la renovación falla, redirige al login
+      const path = window.location.pathname;
+      if (path.startsWith('/admin') || path.startsWith('/doctor')) {
         window.location.href = '/login';
-        return Promise.reject(refreshError);
       }
     }
 

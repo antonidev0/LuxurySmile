@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom"; // Para obtener parámetros de la URL y navegar
 import { useEffect, useState } from "react";               // Para manejar efectos secundarios y estados
-import axios from "axios";                                 // Para hacer peticiones HTTP
+import { verifyAccount } from "../service/authService"; // Petición de verificación al backend
 
 // También importamos íconos de estado desde lucide-react (opcional si estás usando esa librería)
 import { Loader, CheckCircle, AlertTriangle } from "lucide-react";
@@ -25,7 +25,7 @@ const VerifyPage = () => {
     const verify = async () => {
       try {
         // Hacemos una petición GET al backend con el ID y el token
-        const response = await axios.get(`http://localhost:3003/api/users/verify/${id}/${token}`);
+        const response = await verifyAccount(id, token);
         
         // Si la verificación fue exitosa, actualizamos el estado
         setStatus("success");

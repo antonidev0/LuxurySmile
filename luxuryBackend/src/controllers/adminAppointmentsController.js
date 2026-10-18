@@ -1,7 +1,8 @@
 import Staff from '../models/staff.js';
 import Appointment from '../models/appointment.js';
 import mongoose from 'mongoose';
-import { startOfDay, endOfDay } from "date-fns";  
+import fs from "fs";
+import path from "path";
 
 // Ruta para obtener todas las citas del admin
 export const getAllAppointments = async (request, response) => {
@@ -86,12 +87,21 @@ export const assignDoctorToAppointment = async (request, response) => {
 };
 
   
+// Comprueba si un usuario esta entre los doctores asignados (poblados o como ObjectId)
+const isAssigned = (appointment, userId) =>
+  appointment.assignedDoctors.some((doc) => (doc._id ?? doc).toString() === userId);
+
 // Actualizar estado de una cita (Admin y doctores); 
 // Al actualizar el estado de una cita, tambien se guarda el nombre del doctor que la completó 
 // Actualizar estado de una cita (Admin y doctores) 
 export const updateAppointment = async (request, response) => {
   const { id } = request.params;
-  const updates = request.body;
+  // Solo se permite cambiar el estado; el resto de campos no se toca desde aqui
+  const updates = { status: request.body.status };
+
+  if (!updates.status) {
+    return response.status(400).json({ message: "El estado es obligatorio" });
+  }
 
   const validStatuses = ["pendiente", "confirmada", "cancelada", "completada"];
   if (updates.status && !validStatuses.includes(updates.status)) {
@@ -103,6 +113,11 @@ export const updateAppointment = async (request, response) => {
 
     if (!appointment) {
       return response.status(404).json({ message: "Cita no encontrada" });
+    }
+
+    // Un doctor solo puede modificar las citas que tiene asignadas
+    if (request.user.role === "doctor" && !isAssigned(appointment, request.user.id)) {
+      return response.status(403).json({ message: "No tienes asignada esta cita" });
     }
 
     // Si ya está completada, no permitir modificarla
@@ -136,7 +151,7 @@ export const updateAppointment = async (request, response) => {
     response.status(200).json(updatedAppointment);
   } catch (error) {
     console.error("Error al actualizar la cita:", error);
-    response.status(500).json({ message: "Error al actualizar la cita", error });
+    response.status(500).json({ message: "Error al actualizar la cita" });
   }
 };
 
@@ -178,19 +193,27 @@ export const deleteDoctorById = async (request, response) => {
 export const uploadAppointmentPDF = async (request, response) => {
   try {
     const { id } = request.params;
+
+    if (!request.file) {
+      return response.status(400).json({ message: "Debes adjuntar un archivo PDF" });
+    }
+
     const filePath = `/uploads/pdf/${request.file.filename}`;
 
-    const appointment = await Appointment.findByIdAndUpdate(
-      id,
-      {
-        historialPDF: filePath,
-      },
-      { new: true }
-    );
+    const appointment = await Appointment.findById(id);
 
     if (!appointment) {
+      fs.unlink(request.file.path, () => {});
       return response.status(404).json({ message: "Cita no encontrada" });
     }
+
+    if (request.user.role === "doctor" && !isAssigned(appointment, request.user.id)) {
+      fs.unlink(request.file.path, () => {});
+      return response.status(403).json({ message: "No tienes asignada esta cita" });
+    }
+
+    appointment.historialPDF = filePath;
+    await appointment.save();
 
     return response.status(200).json({
       message: "PDF subido exitosamente",
@@ -198,6 +221,34 @@ export const uploadAppointmentPDF = async (request, response) => {
     });
   } catch (error) {
     console.error("Error al subir el PDF:", error);
+    response.status(500).json({ message: "Error del servidor" });
+  }
+};
+
+// Descargar el historial PDF de una cita (solo personal con sesion iniciada)
+export const getAppointmentPDF = async (request, response) => {
+  try {
+    const appointment = await Appointment.findById(request.params.id);
+
+    if (!appointment || !appointment.historialPDF) {
+      return response.status(404).json({ message: "Historial no encontrado" });
+    }
+
+    if (request.user.role === "doctor" && !isAssigned(appointment, request.user.id)) {
+      return response.status(403).json({ message: "No tienes asignada esta cita" });
+    }
+
+    // historialPDF se guarda como "/uploads/pdf/<archivo>.pdf"; usamos solo el nombre del archivo
+    const fileName = path.basename(appointment.historialPDF);
+    const filePath = path.resolve("uploads", "pdf", fileName);
+
+    if (!fs.existsSync(filePath)) {
+      return response.status(404).json({ message: "Archivo no encontrado" });
+    }
+
+    response.sendFile(filePath);
+  } catch (error) {
+    console.error("Error al obtener el PDF:", error);
     response.status(500).json({ message: "Error del servidor" });
   }
 };

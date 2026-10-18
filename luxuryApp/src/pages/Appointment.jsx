@@ -22,7 +22,7 @@ import { appointmentSchema } from '../validations/appointmentSchema';
 import Navbar from '../components/Nav';
 import Notification from '../components/Notification';
 import { useAppointment } from '../context/AppointmentContext';
-import { useEffect } from 'react';
+import API from '../service/api';
 
 const Appointment = () => {
   const [selectedDate, setSelectedDate] = useState('');
@@ -30,6 +30,8 @@ const Appointment = () => {
   const { createAppointment } = useAppointment();
   const { register,
     handleSubmit,
+    setError,
+    reset,
     formState: { errors, isValid, isDirty }
   } = useForm({
     resolver: zodResolver(appointmentSchema),
@@ -37,23 +39,39 @@ const Appointment = () => {
   });
 
   const hasErrors = Object.keys(errors).length > 0;
+  const dateField = register("date");
   const toast = useToast();
   const [successMessage, setSuccessMessage] = useState("");
 
-  const onSubmit = async (data) => {
-    try {
+  // Comprueba si la hora elegida queda a menos de 40 minutos de una cita ocupada
+  const hasNearbyAppointment = (selected) =>
+    occupiedTimes.some((occupied) => {
+      const [h1, m1] = occupied.split(":").map(Number);
+      const [h2, m2] = selected.split(":").map(Number);
+      return Math.abs((h1 * 60 + m1) - (h2 * 60 + m2)) < 40;
+    });
 
-      console.log("Datos enviados:", data);
-      const response = await createAppointment(data);
+  const onSubmit = async (data) => {
+    // Con zodResolver, las reglas "validate" de register() se ignoran,
+    // así que el choque de horarios se comprueba aquí
+    if (hasNearbyAppointment(data.time)) {
+      setError("time", { message: "Ya existe una cita cercana a esta hora" });
+      return;
+    }
+
+    try {
+      await createAppointment(data);
       // Muestra el mensaje toast
       toast({
         title: "Cita creada",
-        description: "Revise su correo electrónico .",
+        description: "Su solicitud fue registrada. La clínica le contactará para confirmarla.",
         status: "success",
         duration: 5000, // 5 segundos
         isClosable: true,
         position: "top", // Puedes usar "bottom", "top-left", etc.
       });
+      reset();
+      setOccupiedTimes([]);
 
     } catch (error) {
 
@@ -85,8 +103,8 @@ const Appointment = () => {
 
   const fetchOccupiedTimes = async (date) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/appointment/occupied?date=${date}`);
-      const data = await response.json();
+      if (!date) return setOccupiedTimes([]);
+      const { data } = await API.get('/api/appointment/occupied', { params: { date } });
       setOccupiedTimes(data.occupiedTimes || []);
     } catch (error) {
       console.error("Error al obtener horarios ocupados:", error);
@@ -156,11 +174,11 @@ const Appointment = () => {
               <Input
                 id="date"
                 type="date"
-                {...register("date")}
+                {...dateField}
                 onChange={(e) => {
-                  const date = e.target.value;
-                  setSelectedDate(date);
-                  fetchOccupiedTimes(date);
+                  dateField.onChange(e); // mantiene react-hook-form al tanto del valor
+                  setSelectedDate(e.target.value);
+                  fetchOccupiedTimes(e.target.value);
                 }}
               />
               <FormErrorMessage>{errors.date?.message}</FormErrorMessage>
@@ -174,19 +192,7 @@ const Appointment = () => {
                 min="08:00"
                 max="17:00"
                 type="time"
-                {...register("time", {
-                  validate: (value) => {
-                    const selected = value;
-                    const conflict = occupiedTimes.some(occupied => {
-                      // Verifica si la hora seleccionada está dentro del rango de 40min de una ocupada
-                      const [h1, m1] = occupied.split(":").map(Number);
-                      const [h2, m2] = selected.split(":").map(Number);
-                      const diff = Math.abs((h1 * 60 + m1) - (h2 * 60 + m2));
-                      return diff < 40;
-                    });
-                    return conflict ? "Ya existe una cita cercana a esta hora" : true;
-                  },
-                })}
+                {...register("time")}
               />
               <FormErrorMessage>{errors.time?.message}</FormErrorMessage>
             </FormControl>

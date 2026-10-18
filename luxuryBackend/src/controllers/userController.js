@@ -1,5 +1,6 @@
 // Controladores
 import Staff from '../models/staff.js';
+import { AppError } from '../utils/AppError.js';
 import { registerUser,
         sendVerificationEmail,
         loginUser,
@@ -11,15 +12,15 @@ export const register = async (request, response, next) => {
         const newUser = await registerUser(request.body);
 
         // 2.- ahora enviamos la verifycacion del email
-        const verificationToken = await sendVerificationEmail(newUser);
+        await sendVerificationEmail(newUser);
         
         // 3 respondeos con exito al front
+        // (el token de verificacion solo viaja por correo, nunca en la respuesta)
         response.status(201).json({
             message: 'Registro exitoso. revise su correo para verificar su cuenta.',
             data: {
                 id: newUser.id,
-                email: newUser.email,
-                verificationToken
+                email: newUser.email
             }
         });
     } catch (error){

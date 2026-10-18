@@ -23,7 +23,8 @@ const Doctors = () => {
   const fetchDoctors = async () => {
     try {
       const { data } = await axiosInstance.get('/api/admin/getDoctors');
-      setDoctors(data);
+      // El endpoint devuelve todo el personal; aquí solo listamos doctores
+      setDoctors(data.filter((staff) => staff.role === 'doctor'));
     } catch (error) {
       toast({
         title: 'Error',
@@ -38,8 +39,8 @@ const Doctors = () => {
   };
 
   const handleDelete = async (doctorId) => {
-    console.log(doctorId);
-    
+    if (!window.confirm('¿Seguro que quieres eliminar este doctor?')) return;
+
     try {
       await axiosInstance.delete(`/api/admin/deleteDoctor/${doctorId}`);
       toast({
@@ -48,8 +49,6 @@ const Doctors = () => {
         duration: 3000,
         isClosable: true,
       });
-      console.log(doctorId);
-      
       setDoctors((prev) => prev.filter((doc) => doc.id !== doctorId));
     } catch (error) {
       toast({
@@ -94,7 +93,7 @@ const Doctors = () => {
           >
             <Flex justify="space-between" align="center">
               <Box>
-                <Text fontWeight="bold">{doctor.firstName} {doctor.lastName}</Text>
+                <Text fontWeight="bold">Dr. {doctor.name} {doctor.lastName}</Text>
                 <Text color="gray.600">{doctor.specialty}</Text>
                 <Text fontSize="sm" color="gray.500">{doctor.email}</Text>
               </Box>

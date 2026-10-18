@@ -1,3 +1,4 @@
 node_modules
 .env
-package-lock.json
+# Historiales médicos subidos o generados (datos de pacientes, nunca al repo)
+uploads/

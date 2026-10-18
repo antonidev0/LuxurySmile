@@ -19,9 +19,9 @@ import AOS from "aos";
 import "aos/dist/aos.css";
 import Navbar from "../components/Nav";
 import Footer from "../components/Footer";
-import smilingWoman from "../assets/fotografia.jpeg"; 
+import smilingWoman from "../assets/Fotografia.jpeg"; 
 // Al inicio del archivo 
-import limpiezaImg from "../assets/fotografia.jpeg"; // Asegúrate de que estos existen
+import limpiezaImg from "../assets/Fotografia.jpeg"; // Asegúrate de que estos existen
 import limpiezaVideo from "../assets/consulta.mp4";
 import tratamient from "../assets/tratamient.mp4";  
 import sonrisa from "../assets/sonrisa3.jpg"; 

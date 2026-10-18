@@ -23,6 +23,7 @@ import {
   FiUser,
   FiLogOut,
   FiEdit3,
+  FiUserPlus,
 } from "react-icons/fi";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -32,6 +33,7 @@ const navItems = [
   { label: "Calendario", icon: FiCalendar, path: "/admin/dashboard/calendario" },
   { label: "Pacientes", icon: FiUsers, path: "/admin/dashboard/pacientes" },
   { label: "Doctores", icon: FiUserCheck, path: "/admin/dashboard/doctors" },
+  { label: "Registrar personal", icon: FiUserPlus, path: "/admin/dashboard/registro" },
   { label: "Asignar ", icon: FiEdit3, path: "/admin/dashboard/gestion" },
   { label: "Usuario", icon: FiUser, path: "/admin/dashboard/usuario"},
   { label: "Historias", icon: FiUser, path: "/admin/dashboard/historias" },

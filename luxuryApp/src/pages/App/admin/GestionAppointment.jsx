@@ -16,7 +16,6 @@ import {
 import Sidebar from "../../../components/dashboard/Sidebar";
 import { useAdmin } from "../../../context/AdminContext";
 import { motion } from "framer-motion";
-import { data } from "react-router-dom";
 import Calendar from "react-calendar"; // Importamos el calendario
 import "react-calendar/dist/Calendar.css"; // Importamos los estilos del calendario
 import MedicalHistoryForm from "../../../components/admin/MedicalHistoryForm";
@@ -27,23 +26,20 @@ const MotionBox = motion(Box);
 
 const GestionAppointment = () => {
   const { getAppointments, getDoctors, assignDoctorToAppointment, updateAppointmentStatus, } = useAdmin();
-  const [refresh, setRefresh] = useState(false);
   const [appointments, setAppointments] = useState([]);
   const [doctors, setDoctors] = useState([]);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
   const [filteredAppointments, setFilteredAppointments] = useState([]);
   const [selectedCI, setSelectedCI] = useState('');
-  const [updatedAppointment, setUpdatedAppointment] = useState(appointments);
 
   const toast = useToast()
 
 
+  // Recarga las citas tras subir o generar un historial PDF
   const handleSuccess = async () => {
-    const updated = await getAppointments(); // o una llamada individual por ID
-    const found = updated.find((a) => a._id === appointments._id);
-    setUpdatedAppointment(found || appointments);
-    setRefresh(!refresh); // Forzar rerender
+    const updated = await getAppointments();
+    setAppointments(updated);
   };
 
 
@@ -52,9 +48,7 @@ const GestionAppointment = () => {
     let filtered = [...appointments];
 
     if (selectedDate) {
-      filtered = filtered.filter((appt) =>
-        appt.date.startsWith(selectedDate)
-      );
+      filtered = filtered.filter((appt) => appt.date.startsWith(selectedDate));
     }
 
     if (selectedStatus) {
@@ -78,9 +72,8 @@ const GestionAppointment = () => {
 
         const doctorsData = await getDoctors(); // ✅ Aquí obtenemos los doctores
         setAppointments(data);
-        setDoctors(doctorsData);
-        setFilteredAppointments(data); // Inicializamos con todas las citas
-        handleFilter(); // Aplicamos el filtro inicial     
+        // getDoctors devuelve todo el personal; solo se asignan doctores
+        setDoctors(doctorsData.filter((doc) => doc.role === "doctor"));
 
 
       } catch (err) {
@@ -95,7 +88,8 @@ const GestionAppointment = () => {
     let filtered = [...appointments];
 
     if (selectedDate) {
-      filtered = filtered.filter(appt => appt.date === selectedDate);
+      // appt.date llega como "2025-07-29T00:00:00.000Z"
+      filtered = filtered.filter(appt => appt.date.startsWith(selectedDate));
     }
 
     if (selectedStatus) {
@@ -262,10 +256,10 @@ const GestionAppointment = () => {
                     <Text mt={2} fontSize="sm" fontWeight="medium" textAlign="center">
                       Doctores asignados:
                       <Box pl={2} mt={1}>
-                        {appt.completedBy?.length > 0
-                          ? appt.completedBy.map((doc, index) => (
+                        {appt.assignedDoctors?.length > 0
+                          ? appt.assignedDoctors.map((doc, index) => (
                             <Text key={index} fontSize="sm">
-                              {doc.name} {doc.lastName}
+                              Dr. {doc.name} {doc.lastName}
                             </Text>
                           ))
                           : <Text fontSize="sm">Ninguno</Text>}
@@ -274,6 +268,7 @@ const GestionAppointment = () => {
 
                     <Select
                       placeholder="Asignar doctor"
+                      value=""
                       mt={2}
                       size="sm"
                       variant="outline"
@@ -337,11 +332,10 @@ const GestionAppointment = () => {
 
                           const updated = await getAppointments();
                           setAppointments(updated);
-                          setFilteredAppointments(updated);
                         } catch (err) {
                           toast({
                             title: "Error al actualizar estado",
-                            description: err.response.data.message || "Error desconocido",
+                            description: err.response?.data?.message || "Error desconocido",
                             status: "error",
                             duration: 2000,
                             isClosable: true,
@@ -355,7 +349,11 @@ const GestionAppointment = () => {
                       <option value="cancelada">Cancelada</option>
                     </Select>
 
-                    <MedicalHistoryForm appointmentId={appt._id} onSuccess={handleSuccess} />
+                    <MedicalHistoryForm
+                      appointmentId={appt._id}
+                      historialPDF={appt.historialPDF}
+                      onSuccess={handleSuccess}
+                    />
 
 
                     <Flex justify="center">

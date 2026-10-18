@@ -14,22 +14,23 @@ import {
   AlertIcon,
   AlertTitle,
   AlertDescription,
-  Stack
+  Stack,
+  Flex
 } from '@chakra-ui/react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod'
 import { staffSchema } from '../../validations/staffSchema.js';
 
-import Navbar from '../../components/Nav';
-import axios from 'axios';
-import Notification from '../../components/Notification';
+import Sidebar from '../../components/dashboard/Sidebar';
+import { registerStaff } from '../../service/authService';
 
 
 export const RegistrationForm = () => {
   
   const {register,
          handleSubmit, 
+         reset,
          formState: { errors, isValid, isDirty } 
         } = useForm({ resolver: zodResolver(staffSchema),
           mode: "onChange",
@@ -41,21 +42,21 @@ export const RegistrationForm = () => {
         
         const onSubmit = async (data) => {
             try {
-              console.log("Datos enviados:", data);
-              const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/users/register`, data)
+              // confirmPassword solo sirve en el formulario; no se envía al backend
+              const { confirmPassword, ...staffData } = data;
+              await registerStaff(staffData);
               // Muestra el mensaje toast
               toast({
-                title: "Registro exitoso",
-                description: "Revise su correo electrónico para confirmar su cuenta.",
+                title: "Personal registrado",
+                description: "Le llegará un correo para verificar su cuenta.",
                 status: "success",
                 duration: 5000, // 5 segundos
                 isClosable: true,
                 position: "top", // Puedes usar "bottom", "top-left", etc.
               });
+              reset();
 
           } catch (error) {
-            console.log(error);
-            
             console.error("Error en el registro:", error);
             const message = error.response?.data?.message || "Ocurrió un error inesperado en el registro"; 
             
@@ -81,11 +82,15 @@ export const RegistrationForm = () => {
         });
 };
     return (
-        <>         
-          <Navbar />
+        <Flex minH="100vh">
+          <Sidebar />
+          <Box
+            flex="1"
+            pt={{ base: 16, md: 4 }}
+          >
           <Box
             fontFamily="body"
-            pt={20}
+            py={8}
             minH="100vh"
             display="flex"
             alignItems="center"
@@ -232,8 +237,8 @@ export const RegistrationForm = () => {
               </Alert>
               </Stack>
             )}
-
-        </>
+          </Box>
+        </Flex>
     );
 };
  

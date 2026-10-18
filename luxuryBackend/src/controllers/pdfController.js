@@ -26,6 +26,12 @@ export const generateMedicalPDF = async (request, response) => {
     // Generar PDF
     const doc = new PDFDocument();
     const writeStream = fs.createWriteStream(filePath);
+    writeStream.on("error", (error) => {
+      console.error("Error al escribir el PDF:", error);
+      if (!response.headersSent) {
+        response.status(500).json({ message: "Error al generar PDF" });
+      }
+    });
     doc.pipe(writeStream);
 
     // HEADER
@@ -43,7 +49,7 @@ export const generateMedicalPDF = async (request, response) => {
     // Doctores asignados
     doc.text("Doctores asignados:");
     appointment.assignedDoctors.forEach((docItem, index) => {
-      doc.text(`${index + 1}. ${docItem.name} (${docItem.specialty || "Especialidad no especificada"})`);
+      doc.text(`${index + 1}. ${docItem.name} ${docItem.lastName} (${docItem.specialty || "Especialidad no especificada"})`);
     });
 
     // Doctores que completaron
@@ -59,14 +65,19 @@ export const generateMedicalPDF = async (request, response) => {
 
     // Esperar que termine de escribirse
     writeStream.on("finish", async () => {
-      // Guardar path en MongoDB
-      appointment.historialPDF = `/uploads/pdf/${fileName}`;
-      await appointment.save();
+      try {
+        // Guardar path en MongoDB
+        appointment.historialPDF = `/uploads/pdf/${fileName}`;
+        await appointment.save();
 
-      response.status(200).json({
-        message: "PDF generado y guardado exitosamente",
-        pdfUrl: appointment.historialPDF,
-      });
+        response.status(200).json({
+          message: "PDF generado y guardado exitosamente",
+          pdfUrl: appointment.historialPDF,
+        });
+      } catch (error) {
+        console.error("Error al guardar el PDF en la cita:", error);
+        response.status(500).json({ message: "Error al generar PDF" });
+      }
     });
   } catch (error) {
     console.error("Error al generar PDF:", error);

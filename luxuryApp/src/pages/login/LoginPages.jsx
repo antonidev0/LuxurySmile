@@ -14,7 +14,7 @@ import {
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
-import axios from "axios"; 
+import { resendVerification } from "../../service/authService";
 import { useAuth } from "../../context/AuthContext";
 
 import Navbar from "../../components/Nav";
@@ -23,6 +23,7 @@ const LoginPage = () => {
   const {
     register,
     handleSubmit,
+    getValues,
     formState: { errors, isValid, isDirty },
   } = useForm();
   
@@ -55,15 +56,9 @@ const LoginPage = () => {
 
   } catch (error) {
     if (error.response) {
-      console.log("OOOOOOOOOOOOO");
-      
-    console.log(error);
-    
       setErrorMsg(error.response.data.message);
       if (error.response.status === 403) setShowResend(true);
     } else {
-      console.log(error);
-      
       setErrorMsg("Error de red o del servidor.");
     }
   }
@@ -71,9 +66,8 @@ const LoginPage = () => {
 
   const handleResendVerification = async () => {
     try {
-      await axios.post("http://localhost:3003/api/users/resend-verification", {
-        email: "", // puedes guardar el email si quieres reutilizarlo
-      });
+      // Reutilizamos el correo que el usuario escribió en el formulario
+      await resendVerification(getValues("email"));
       setResendSuccess("Se ha reenviado el correo de verificación.");
     } catch (error) {
       setResendSuccess("Error al reenviar el correo.");
@@ -130,7 +124,7 @@ const LoginPage = () => {
           </form>
 
           <Text mt={4} textAlign="center" fontSize="sm">
-            ¿No tienes cuenta? <strong>Regístrate</strong>
+            ¿No tienes cuenta? Pide al administrador de la clínica que te registre.
           </Text>
 
           {resendSuccess && (

@@ -20,65 +20,94 @@ import {
 import { FiEye, FiDownload, FiUpload } from "react-icons/fi";
 import { useEffect, useState } from "react";
 import { useAdmin } from "../../context/AdminContext";
-import UploadPDF from "./UploadPDF";
-import PDFViewer from "./PDFviewer";
 
-const MedicalHistoryForm = ({ appointmentId }) => {
-  const { getAppointments, uploadPDFToAppointment, generatePDF, } = useAdmin();
-  const [hasPDF, setHasPDF] = useState(false);
+// historialPDF viene de la cita que ya cargó el padre: así no se piden
+// todas las citas otra vez por cada tarjeta.
+const MedicalHistoryForm = ({ appointmentId, historialPDF, onSuccess }) => {
+  const { uploadPDFToAppointment, generatePDF, getAppointmentPDFUrl } = useAdmin();
+  const hasPDF = Boolean(historialPDF);
   const [pdfUrl, setPdfUrl] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [file, setFile] = useState(null);
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  const fetchPDFStatus = async () => {
+  // Si cambia el PDF de la cita, descartamos la copia local anterior
+  useEffect(() => {
+    setPdfUrl("");
+  }, [historialPDF]);
+
+  // Libera la URL local del PDF al desmontar o al reemplazarla
+  useEffect(() => {
+    return () => {
+      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+    };
+  }, [pdfUrl]);
+
+  const showError = (title, err) =>
+    toast({
+      title,
+      description: err.message,
+      status: "error",
+      duration: 4000,
+      isClosable: true,
+    });
+
+  // Los PDF están protegidos: se descargan con el token y se muestran desde una URL local
+  const loadPDF = async () => {
+    if (pdfUrl) return pdfUrl;
+    setLoading(true);
     try {
-      const data = await getAppointments();
-      const appointment = data.find((appt) => appt._id === appointmentId);
-      if (appointment?.historialPDF) {
-        const fullUrl = `${import.meta.env.VITE_BACKEND_URL}${appointment.historialPDF}`;
-        setHasPDF(true);
-        setPdfUrl(fullUrl);
-      } else {
-        setHasPDF(false);
-        setPdfUrl("");
-      }
-    } catch (err) {
-      console.error("Error al verificar historial PDF:", err);
+      const url = await getAppointmentPDFUrl(appointmentId);
+      setPdfUrl(url);
+      return url;
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGeneratePDF = async () => {
+  const handleView = async () => {
     try {
-      const { pdfUrl } = await generatePDF(appointmentId);
+      await loadPDF();
+      onOpen();
+    } catch (err) {
+      showError("Error al abrir el PDF", err);
+    }
+  };
+
+  const handleDownload = async () => {
+    try {
+      const url = await loadPDF();
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `historial-${appointmentId}.pdf`;
+      link.click();
+    } catch (err) {
+      showError("Error al descargar el PDF", err);
+    }
+  };
+
+  const handleGeneratePDF = async () => {
+    setLoading(true);
+    try {
+      await generatePDF(appointmentId);
       toast({
         title: "PDF generado correctamente",
         status: "success",
         duration: 3000,
         isClosable: true,
       });
-      fetchPDFStatus(); // refresca estado local
+      onSuccess?.(); // el padre recarga las citas
     } catch (err) {
-      toast({
-        title: "Error al generar el PDF",
-        description: err.message,
-        status: "error",
-        duration: 4000,
-        isClosable: true,
-      });
+      showError("Error al generar el PDF", err);
+    } finally {
+      setLoading(false);
     }
   };
 
-
-  useEffect(() => {
-    fetchPDFStatus();
-  }, []);
-
   const handleUpload = async () => {
     if (!file) return;
+    setLoading(true);
     try {
       await uploadPDFToAppointment(appointmentId, file);
       toast({
@@ -88,16 +117,11 @@ const MedicalHistoryForm = ({ appointmentId }) => {
         isClosable: true,
       });
       setFile(null);
-      fetchPDFStatus(); // actualiza estado
-      onSuccess?.(); // notifica al padre
+      onSuccess?.(); // el padre recarga las citas
     } catch (err) {
-      toast({
-        title: "Error al subir el PDF",
-        description: err.message,
-        status: "error",
-        duration: 4000,
-        isClosable: true,
-      });
+      showError("Error al subir el PDF", err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -115,15 +139,14 @@ const MedicalHistoryForm = ({ appointmentId }) => {
             icon={<FiEye />}
             aria-label="Ver PDF"
             colorScheme="blue"
-            onClick={onOpen}
+            onClick={handleView}
           />
-          <a href={pdfUrl} target="_blank" rel="noopener noreferrer" download>
-            <IconButton
-              icon={<FiDownload />}
-              aria-label="Descargar PDF"
-              colorScheme="green"
-            />
-          </a>
+          <IconButton
+            icon={<FiDownload />}
+            aria-label="Descargar PDF"
+            colorScheme="green"
+            onClick={handleDownload}
+          />
           <Input
             type="file"
             accept="application/pdf"

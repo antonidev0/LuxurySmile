@@ -24,7 +24,6 @@ const AppRouter = () => (
       <Route path="/services" element={<Services />} />
       <Route path='/solicitar-cita' element={<Appointment/>} /> 
       <Route path='/nosotros' element={<AboutUs/>} /> 
-      <Route path="signup" element={<Signup />} />
       <Route path="login" element={<LoginPage />} />
       <Route path="/verify/:id/:token" element={<VerifyPage />} />
     </Route>
@@ -34,6 +33,8 @@ const AppRouter = () => (
       <Route path="admin/dashboard" element={<AdminDashboard />} />
       <Route path="admin/dashboard/gestion" element={<GestionAppointment />} />
       <Route path="admin/dashboard/doctors" element={<Doctors />} /> 
+      {/* Solo el admin da de alta personal (el backend también lo exige) */}
+      <Route path="admin/dashboard/registro" element={<Signup />} />
       <Route path="admin/dashboard/historias" element={<MedicalHistoryForm />} /> 
     </Route>
 

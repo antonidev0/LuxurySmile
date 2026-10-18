@@ -4,7 +4,8 @@ import { getAllStaff,
          getAllAppointments,
          updateAppointment,
          deleteDoctorById,
-         uploadAppointmentPDF } from "../controllers/adminAppointmentsController.js";
+         uploadAppointmentPDF,
+         getAppointmentPDF } from "../controllers/adminAppointmentsController.js";
 import { authenticateJWT } from "../middlewares/authenticateJWT.js";
 import { adminOnly, staffOnly } from "../middlewares/staffOnly.js"; 
 import { uploadPDF } from "../middlewares/upload.js";
@@ -27,6 +28,10 @@ router.patch('/:id/updateStatus', authenticateJWT, staffOnly, updateAppointment)
 // Esta ruta es para que el admin pueda eliminar un doctor o administrador
 router.delete('/deleteDoctor/:id', authenticateJWT, adminOnly, deleteDoctorById);
 
-router.patch('/:id/upload-pdf', uploadPDF.single("pdf"), authenticateJWT, staffOnly, uploadAppointmentPDF);
+// Primero se valida la sesion y luego se acepta el archivo, para no guardar subidas anonimas
+router.patch('/:id/upload-pdf', authenticateJWT, staffOnly, uploadPDF.single("pdf"), uploadAppointmentPDF);
+
+// Descargar el historial PDF de una cita (los PDF ya no son publicos)
+router.get('/:id/pdf', authenticateJWT, staffOnly, getAppointmentPDF);
 
 export default router; 

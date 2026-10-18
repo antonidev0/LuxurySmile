@@ -85,9 +85,6 @@ export const AdminProvider = ({ children }) => {
         }
       );
 
-      // Opcional: actualizar citas locales si quieres
-      await getAppointments();
-
       return response.data;
     } catch (err) {
       handleError(err, "subir el historial PDF");
@@ -96,24 +93,36 @@ export const AdminProvider = ({ children }) => {
     }
   };
 
+  // Usa API para que la petición lleve el token de sesión
   const generatePDF = async (appointmentId) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/pdf/generate-pdf/${appointmentId}`, {
-        method: "POST",
-      });
-      const data = await response.json();
-      return data; // Retorna para usar en el componente si hace falta
+      const response = await API.post(`/api/pdf/generate-pdf/${appointmentId}`);
+      return response.data; // Retorna para usar en el componente si hace falta
     } catch (err) {
-      console.error("Error al generar PDF:", err);
-      throw err;
+      handleError(err, "generar el PDF");
+    }
+  };
+
+  // Descarga el historial PDF (protegido) y devuelve una URL local para verlo o descargarlo
+  const getAppointmentPDFUrl = async (appointmentId) => {
+    try {
+      const response = await API.get(`/api/admin/${appointmentId}/pdf`, { responseType: "blob" });
+      return URL.createObjectURL(response.data);
+    } catch (err) {
+      handleError(err, "obtener el historial PDF");
     }
   };
 
   // Eliminar un doctor por ID (Admin)
-  const deleteDoctorById = async (id = "") => {
-    console.log("holamindo");
-
-  }
+  const deleteDoctorById = async (id) => {
+    try {
+      const response = await API.delete(`/api/admin/deleteDoctor/${id}`);
+      setDoctors((prev) => prev.filter((doc) => doc.id !== id));
+      return response.data;
+    } catch (err) {
+      handleError(err, "eliminar el doctor");
+    }
+  };
 
 
   // Manejo centralizado de errores
@@ -138,6 +147,7 @@ export const AdminProvider = ({ children }) => {
         deleteDoctorById,
         uploadPDFToAppointment,
         generatePDF,
+        getAppointmentPDFUrl,
       }}
     >
       {children}

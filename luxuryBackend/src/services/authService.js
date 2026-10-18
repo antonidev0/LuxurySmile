@@ -44,11 +44,11 @@ export const registerUser = async (data) => {
         const numberPhoneExist = await Staff.findOne({ numberPhone });
         const numberIdExist = await Staff.findOne({ numberId });  
         if(emailExist){ 
-            throw new AppError('El correo ya se encuentra en uso', 401);
+            throw new AppError('El correo ya se encuentra en uso', 409);
           } else if(numberPhoneExist) {
-            throw new AppError('El numero de telefono ya se encuentra en uso', 401);
+            throw new AppError('El numero de telefono ya se encuentra en uso', 409);
           } else if(numberIdExist) {
-            throw new AppError('El numero de identidad ya se encuentra en uso', 401);
+            throw new AppError('El numero de identidad ya se encuentra en uso', 409);
           }
 
 
@@ -79,8 +79,6 @@ export const registerUser = async (data) => {
 // envia email al usuario.
  
 export const sendVerificationEmail = async (user) => {
-    console.log(user);
-    
     const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: VERIF_TOKEN_EXPIRES });
     const link = `${PAGE_URL}/verify/${user.id}/${token}`;
 
@@ -92,8 +90,7 @@ export const sendVerificationEmail = async (user) => {
         auth: {
             user: EMAIL_USER,
             pass: EMAIL_PASS
-        },
-        tls: { rejectUnauthorized: false }
+        }
     });
     await transporter.sendMail({
         from: EMAIL_USER,
