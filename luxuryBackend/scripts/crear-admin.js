@@ -1,11 +1,23 @@
 // Crea (o asciende) la cuenta de administrador de la clínica.
 // Uso: npm run crear-admin
 // Como el registro de personal solo lo puede hacer un admin, la primera cuenta se crea así.
-import 'dotenv/config';
+import dotenv from 'dotenv';
 import readline from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
 import bcrypt from 'bcrypt';
 import { PrismaClient } from '@prisma/client';
+import { fileURLToPath } from 'node:url';
+
+// Leemos el .env de luxuryBackend aunque el comando se ejecute desde otra carpeta
+const envPath = fileURLToPath(new URL('../.env', import.meta.url));
+dotenv.config({ path: envPath });
+
+if (!process.env.DATABASE_URL) {
+    console.error(`No se encontró DATABASE_URL en ${envPath}.`);
+    console.error('Revisa que el archivo se llame exactamente ".env" (no ".env.txt"),');
+    console.error('que tenga la línea DATABASE_URL="postgresql://..." y que esté guardado en UTF-8.');
+    process.exit(1);
+}
 
 const prisma = new PrismaClient();
 const rl = readline.createInterface({ input, output });
