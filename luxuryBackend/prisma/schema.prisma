@@ -1,0 +1,70 @@
+// Esquema de la base de datos (PostgreSQL)
+// Tras cambiarlo: npx prisma migrate dev --name <nombre-del-cambio>
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  doctor
+  admin
+}
+
+enum Sex {
+  hombre
+  mujer
+}
+
+enum AppointmentStatus {
+  pendiente
+  confirmada
+  cancelada
+  completada
+}
+
+// Personal de la clínica: administradores y odontólogos
+model Staff {
+  id           String   @id @default(cuid())
+  name         String
+  lastName     String
+  numberId     String   @unique
+  address      String
+  numberPhone  String   @unique
+  birthday     String
+  sex          Sex
+  specialty    String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(doctor)
+  verified     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  // Citas en las que el doctor está asignado
+  appointments Appointment[] @relation("AssignedDoctors")
+}
+
+model Appointment {
+  id           String            @id @default(cuid())
+  firstName    String
+  lastName     String
+  ci           String
+  email        String
+  // Solo el día (YYYY-MM-DD); la hora va aparte en "time"
+  date         DateTime          @db.Date
+  time         String
+  status       AppointmentStatus @default(pendiente)
+  historialPDF String?
+  // Copia de los datos de los doctores al completar la cita,
+  // para conservarlos aunque luego se elimine al doctor
+  completedBy  Json?
+  createdAt    DateTime          @default(now())
+
+  assignedDoctors Staff[] @relation("AssignedDoctors")
+
+  @@index([date])
+}

@@ -1,96 +1,56 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import API from '../service/api'; // Instancia Axios configurada con interceptores
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { tokenStorage } from "../services/api";
+import { fetchCurrentUser, loginRequest } from "../services/auth.service";
 
-// Contexto de autenticación
-export const AuthContext = createContext();
+const AuthContext = createContext(null);
 
 /**
- * Provider de autenticación que maneja estado de usuario y token
+ * Guarda la sesión del personal (admin o doctor).
+ * Al cargar la app, si hay un token guardado, recupera los datos del usuario.
  */
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('token');
+    const storedToken = tokenStorage.get();
     if (!storedToken) {
       setLoading(false);
       return;
     }
 
-    setToken(storedToken);
-    API.defaults.headers.common.Authorization = `Bearer ${storedToken}`;
-
-    API.get('/api/auth/me')
-      .then(response => setUser(response.data))
-      .catch(() => {
-        localStorage.removeItem('token');
-        delete API.defaults.headers.common.Authorization;
-        setToken(null);
-        setUser(null);
-      })
+    tokenStorage.set(storedToken);
+    fetchCurrentUser()
+      .then(setUser)
+      .catch(() => tokenStorage.clear())
       .finally(() => setLoading(false));
   }, []);
 
-  /**
-   * Login: obtiene JWT, lo guarda y carga datos de usuario
-   */
-  const login = async (credentials) => {
-    try {
-      const response = await API.post('/api/users/login', credentials);  
-      const token = response.data.data.token;
+  const login = useCallback(async (credentials) => {
+    const token = await loginRequest(credentials);
+    if (!token) throw new Error("Token no recibido del backend");
 
-      if (!token) throw new Error('Token no recibido del backend');
+    tokenStorage.set(token);
+    const currentUser = await fetchCurrentUser();
+    setUser(currentUser);
+    return currentUser;
+  }, []);
 
-      localStorage.setItem('token', token);
-      API.defaults.headers.common.Authorization = `Bearer ${token}`;
-      setToken(token);
-
-      const userRes = await API.get('/api/auth/me'); 
-      setUser(userRes.data);
-
-      return userRes.data;
-      
-    } catch (error) {
-      console.error('Error en login:', error);
-      throw error;
-    }
-  };
-
-  /**
-   * Logout: limpia token y user
-   */
-  const logout = () => {
-    localStorage.removeItem('token');
-    delete API.defaults.headers.common.Authorization;
-    setToken(null);
+  const logout = useCallback(() => {
+    tokenStorage.clear();
     setUser(null);
-  };
+  }, []);
 
-  const authValue = {
-    user,
-    token,
-    isAuthenticated: Boolean(token),
-    loading,
-    login,
-    logout,
-  };
-
-  return (
-    <AuthContext.Provider value={authValue}>
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({ user, loading, isAuthenticated: Boolean(user), login, logout }),
+    [user, loading, login, logout]
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-/**
- * Hook para acceder al contexto de autenticación
- */
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth debe usarse dentro de AuthProvider');
+  if (!context) throw new Error("useAuth debe usarse dentro de AuthProvider");
   return context;
 };
-
-export default AuthProvider;

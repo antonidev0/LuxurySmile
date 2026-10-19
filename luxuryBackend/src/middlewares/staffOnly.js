@@ -1,6 +1,3 @@
-import jwt from "jsonwebtoken";
-import Staff from "../models/staff.js";
- 
 export const adminOnly = (request, response, next) => {
   if (request.user && request.user.role === "admin") {
     next();
@@ -10,9 +7,17 @@ export const adminOnly = (request, response, next) => {
 };
 
 export const staffOnly = (request, response, next) => {
-  if (request.user && request.user.role === "admin" || request.user.role === "doctor") {
+  if (request.user && (request.user.role === "admin" || request.user.role === "doctor")) {
     next();
   } else {
-    return response.status(403).json({ message: "Acceso denegado: solo administradores" });
+    return response.status(403).json({ message: "Acceso denegado: solo personal de la clínica" });
+  }
+};
+
+export const doctorOnly = (request, response, next) => {
+  if (request.user && request.user.role === "doctor") {
+    next();
+  } else {
+    return response.status(403).json({ message: "Acceso denegado: solo doctores" });
   }
 };

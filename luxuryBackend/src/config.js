@@ -17,7 +17,7 @@ export const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET;
 export const EMAIL_USER = process.env.EMAIL_USER;
 export const EMAIL_PASS = process.env.EMAIL_PASS;
 
-export const VERIF_TOKEN_EXPIRES = '1min';
+export const VERIF_TOKEN_EXPIRES = '1h'; // el correo dice "válido por 1 hora"
 export const SESSION_TOKEN_EXPIRES = '3h';
 
 // Base del front para cors y generar enlaces
@@ -25,7 +25,5 @@ export const SESSION_TOKEN_EXPIRES = '3h';
 export const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
 export const PAGE_URL = process.env.PAGE_URL || CLIENT_ORIGIN;
 
-// conexion a mongo segun el entorno, si es produccion o desarrollo
-export const MONGO_URI = NODE_ENV === 'production'
-? process.env.MONGO_URI_PROD
-: process.env.MONGO_URI_TEST;
+// conexion a PostgreSQL (la lee Prisma desde DATABASE_URL; usa una base distinta en produccion)
+export const DATABASE_URL = process.env.DATABASE_URL;

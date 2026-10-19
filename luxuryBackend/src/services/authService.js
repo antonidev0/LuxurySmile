@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt'; //encriptar las claves de los doctores o administradores.
 import jwt from 'jsonwebtoken'; //Con esto generaremos y verificaremos tokens JWT.
-import Staff from '../models/staff.js'; //importamos nuestro modelo de staff (Personal), aministradores y odontologos.
+import { prisma } from '../config/db.js'; //cliente de la base de datos (tabla Staff: administradores y odontologos).
 import nodemailer from 'nodemailer'; // Con esto envaremos los emails.
 import { AppError } from '../utils/AppError.js'; //usaremos esto para capturar los errores
 import { 
@@ -10,6 +10,10 @@ import {
     EMAIL_PASS, 
     VERIF_TOKEN_EXPIRES,
     SESSION_TOKEN_EXPIRES } from '../config.js';
+
+// Los correos se guardan y buscan en minusculas y sin espacios,
+// para que "Juan@Gmail.com " y "juan@gmail.com" sean la misma cuenta
+export const normalizeEmail = (email) => String(email ?? '').trim().toLowerCase();
 
     // registerUser(data)
     // Crea un nuevo usuario de tipo Staff (doctor/admin) tras validar y encriptar su contraseña.
@@ -25,9 +29,9 @@ export const registerUser = async (data) => {
         birthday,
         sex,
         specialty,
-        email,
         password
     } = data;
+    const email = normalizeEmail(data.email);
     if( !name ||
         !lastName || 
         !numberPhone || 
@@ -40,37 +44,36 @@ export const registerUser = async (data) => {
             throw new AppError('Todos los campos son obligatorios', 400);
         }
 
-        const emailExist = await Staff.findOne({ email }); 
-        const numberPhoneExist = await Staff.findOne({ numberPhone });
-        const numberIdExist = await Staff.findOne({ numberId });  
+        const emailExist = await prisma.staff.findUnique({ where: { email } });
+        const numberPhoneExist = await prisma.staff.findUnique({ where: { numberPhone } });
+        const numberIdExist = await prisma.staff.findUnique({ where: { numberId } });
         if(emailExist){ 
-            throw new AppError('El correo ya se encuentra en uso', 401);
+            throw new AppError('El correo ya se encuentra en uso', 409);
           } else if(numberPhoneExist) {
-            throw new AppError('El numero de telefono ya se encuentra en uso', 401);
+            throw new AppError('El numero de telefono ya se encuentra en uso', 409);
           } else if(numberIdExist) {
-            throw new AppError('El numero de identidad ya se encuentra en uso', 401);
+            throw new AppError('El numero de identidad ya se encuentra en uso', 409);
           }
 
 
         const passwordHash = await bcrypt.hash(password, 10);
           
-        // crea el nuevo Staff o usuario
-        const newUser = new Staff({
-            name,
-            lastName,
-            numberId,
-            address,
-            numberPhone,
-            birthday,
-            sex,
-            specialty,
-            email,
-            passwordHash
-          });
-
-        //   guardamos en Mongo
-          await newUser.save();
-          return newUser;
+        // crea y guarda el nuevo Staff o usuario
+        const newUser = await prisma.staff.create({
+            data: {
+                name,
+                lastName,
+                numberId,
+                address,
+                numberPhone,
+                birthday,
+                sex,
+                specialty,
+                email,
+                passwordHash
+            }
+        });
+        return newUser;
 }
 
 // sendVerificationEmail(user).
@@ -79,8 +82,6 @@ export const registerUser = async (data) => {
 // envia email al usuario.
  
 export const sendVerificationEmail = async (user) => {
-    console.log(user);
-    
     const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: VERIF_TOKEN_EXPIRES });
     const link = `${PAGE_URL}/verify/${user.id}/${token}`;
 
@@ -92,8 +93,7 @@ export const sendVerificationEmail = async (user) => {
         auth: {
             user: EMAIL_USER,
             pass: EMAIL_PASS
-        },
-        tls: { rejectUnauthorized: false }
+        }
     });
     await transporter.sendMail({
         from: EMAIL_USER,
@@ -112,7 +112,7 @@ export const sendVerificationEmail = async (user) => {
 }
 
 // verifyUser(id, token)
-// Verificara el token, comprobara que el id coincida y marcara el campoverified en la base de Mongo
+// Verificara el token, comprobara que el id coincida y marcara el campoverified en la base de datos
 
 export const verifyUser = async (id, token) => {
     try{
@@ -120,7 +120,7 @@ export const verifyUser = async (id, token) => {
         if (payload.id !== id) {
             throw new AppError('Token de verificacion invalido', 401);
         }
-        const updated = await Staff.findByIdAndUpdate(id, { verified: true }, { new: true });
+        await prisma.staff.update({ where: { id }, data: { verified: true } });
         return { message: 'Cuenta Verificada exitosamente'}
     } catch(error){
         throw new AppError('Token invalido o expirado', 401);
@@ -130,9 +130,14 @@ export const verifyUser = async (id, token) => {
 // loginUser, busca usuario por email y compara claves
 // Asegura que el correo este verificado y genera un JWT de sesion de 2h
 
-export const loginUser = async(email, password) =>{
+export const loginUser = async(rawEmail, password) =>{
+    const email = normalizeEmail(rawEmail);
     // 1.- primero buscamos el usuario, el usuario es el correo.
-    const user = await Staff.findOne({ email });
+    // passwordHash se omite por defecto; aqui lo pedimos para comparar la clave
+    const user = await prisma.staff.findUnique({
+        where: { email },
+        omit: { passwordHash: false }
+    });
     if(!user){
         throw new AppError('Datos invalidos', 400);
     }
