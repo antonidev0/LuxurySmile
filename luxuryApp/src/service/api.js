@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 const API = axios.create({
-  baseURL: import.meta.env.VITE_BACKEND_URL,
+  // Si falta VITE_BACKEND_URL en el .env, usamos el backend local por defecto
+  baseURL: import.meta.env.VITE_BACKEND_URL || 'http://localhost:3003',
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',
