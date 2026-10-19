@@ -13,3 +13,11 @@ export const staffOnly = (request, response, next) => {
     return response.status(403).json({ message: "Acceso denegado: solo personal de la clínica" });
   }
 };
+
+export const doctorOnly = (request, response, next) => {
+  if (request.user && request.user.role === "doctor") {
+    next();
+  } else {
+    return response.status(403).json({ message: "Acceso denegado: solo doctores" });
+  }
+};

@@ -16,6 +16,11 @@ export const generateMedicalPDF = async (request, response) => {
       return response.status(404).json({ message: "Cita no encontrada" });
     }
 
+    // Un doctor solo puede generar historias de sus citas asignadas
+    if (request.user.role === "doctor" && !appointment.assignedDoctors.some((doc) => doc.id === request.user.id)) {
+      return response.status(403).json({ message: "No tienes asignada esta cita" });
+    }
+
     // Crea carpeta si no existe
     const uploadDir = path.join("uploads", "pdf");
     if (!fs.existsSync(uploadDir)) {

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { getAllStaff,
          assignDoctorToAppointment,
+         unassignDoctorFromAppointment,
          getAllAppointments,
          updateAppointment,
          deleteDoctorById,
@@ -20,6 +21,9 @@ router.get('/getDoctors', authenticateJWT, adminOnly ,getAllStaff);
 
 // Ruta para asignar un doctor a una cita
 router.put('/:id/assign-doctor', authenticateJWT, adminOnly, assignDoctorToAppointment );
+
+// Ruta para quitar un doctor de una cita
+router.delete('/:id/assign-doctor/:doctorId', authenticateJWT, adminOnly, unassignDoctorFromAppointment);
 
 // ruta para actualizar el estado de una cita
 router.patch('/:id/updateStatus', authenticateJWT, staffOnly, updateAppointment);

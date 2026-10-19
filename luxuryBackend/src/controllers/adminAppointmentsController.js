@@ -85,6 +85,41 @@ export const assignDoctorToAppointment = async (request, response) => {
   }
 };
 
+
+// Quitar un doctor de una cita (las completadas ya no se modifican)
+export const unassignDoctorFromAppointment = async (request, response) => {
+  try {
+    const { id, doctorId } = request.params;
+
+    const appointment = await prisma.appointment.findUnique({
+      where: { id },
+      include: WITH_DOCTORS,
+    });
+
+    if (!appointment) {
+      return response.status(404).json({ message: "Cita no encontrada" });
+    }
+
+    if (appointment.status === "completada") {
+      return response.status(400).json({ message: "No se puede modificar una cita completada" });
+    }
+
+    if (!isAssigned(appointment, doctorId)) {
+      return response.status(400).json({ message: "El doctor no está asignado a esta cita" });
+    }
+
+    const updated = await prisma.appointment.update({
+      where: { id },
+      data: { assignedDoctors: { disconnect: { id: doctorId } } },
+      include: WITH_DOCTORS,
+    });
+
+    return response.status(200).json({ message: "Doctor retirado de la cita", appointment: updated });
+  } catch (error) {
+    console.error("Error retirando doctor:", error);
+    return response.status(500).json({ message: "Error interno del servidor" });
+  }
+};
   
 // Actualizar estado de una cita (Admin y doctores); 
 // Al completar una cita, tambien se guardan los datos de los doctores que la completaron

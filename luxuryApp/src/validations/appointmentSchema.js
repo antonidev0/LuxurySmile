@@ -48,7 +48,8 @@ export const appointmentSchema = z.object({
     }),
 
 
-time: z.string()
+  time: z.string()
+    .min(1, "Elige un horario disponible")
     .regex(TIME_WORK_HOURS, "Horario laboral: 8:00a.m. a 5:00p.m."),
 
 
