@@ -1,5 +1,5 @@
 // Crea (o asciende) la cuenta de administrador de la clínica.
-// Uso: npm run crear-admin
+// Uso: pnpm crear-admin
 // Como el registro de personal solo lo puede hacer un admin, la primera cuenta se crea así.
 import dotenv from 'dotenv';
 import readline from 'node:readline/promises';

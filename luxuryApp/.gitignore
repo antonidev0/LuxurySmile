@@ -25,3 +25,6 @@ dist-ssr
 
 node_modules
 .env
+
+# Usamos pnpm: no subir el lockfile de npm
+package-lock.json

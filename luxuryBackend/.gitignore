@@ -2,3 +2,6 @@ node_modules
 .env
 # Historiales médicos subidos o generados (datos de pacientes, nunca al repo)
 uploads/
+
+# Usamos pnpm: no subir el lockfile de npm
+package-lock.json

@@ -8,6 +8,7 @@ Web de la clínica odontológica: página pública con solicitud de citas y pane
 ## Requisitos
 
 - Node.js 20 o superior
+- pnpm: si no lo tienes, instálalo una vez con `npm install -g pnpm` (o activa `corepack enable`)
 - Una base de datos PostgreSQL. La más cómoda es una gratuita en [Neon](https://neon.tech), que se despierta sola cuando la usas. También puedes usar PostgreSQL local o Docker (abajo).
 
 ## Correrlo en local
@@ -37,10 +38,10 @@ cp .env.example .env      # en Windows: copy .env.example .env
 Edita `.env` y pon como mínimo `DATABASE_URL` (la URL del paso 1) y `JWT_SECRET` (cualquier texto largo y aleatorio). Para que lleguen los correos de verificación, rellena también `EMAIL_USER` y `EMAIL_PASS` (en Gmail, una *contraseña de aplicación*).
 
 ```bash
-npm install               # instala dependencias y genera el cliente de Prisma
-npm run db:deploy         # crea las tablas en la base de datos
-npm run crear-admin       # crea tu cuenta de administrador (te pide correo y contraseña)
-npm run dev               # arranca el backend en http://localhost:3003
+pnpm install              # instala dependencias y genera el cliente de Prisma
+pnpm db:deploy            # crea las tablas en la base de datos
+pnpm crear-admin          # crea tu cuenta de administrador (te pide correo y contraseña)
+pnpm dev                  # arranca el backend en http://localhost:3003
 ```
 
 ### 3. Frontend
@@ -50,8 +51,8 @@ En otra terminal:
 ```bash
 cd luxuryApp
 cp .env.example .env      # VITE_BACKEND_URL=http://localhost:3003
-npm install
-npm run dev               # abre http://localhost:5173
+pnpm install
+pnpm dev                  # abre http://localhost:5173
 ```
 
 ### 4. Probarlo
@@ -65,7 +66,7 @@ npm run dev               # abre http://localhost:5173
 
 | Comando | Para qué |
 | --- | --- |
-| `npm run db:studio` | Abre Prisma Studio para ver y editar los datos en el navegador |
-| `npm run db:migrate -- --name <cambio>` | Crea una migración tras cambiar `prisma/schema.prisma` |
-| `npm run db:deploy` | Aplica las migraciones pendientes (también en producción) |
-| `npm run crear-admin` | Crea un administrador, o convierte en admin una cuenta existente |
+| `pnpm db:studio` | Abre Prisma Studio para ver y editar los datos en el navegador |
+| `pnpm db:migrate --name <cambio>` | Crea una migración tras cambiar `prisma/schema.prisma` |
+| `pnpm db:deploy` | Aplica las migraciones pendientes (también en producción) |
+| `pnpm crear-admin` | Crea un administrador, o convierte en admin una cuenta existente |
