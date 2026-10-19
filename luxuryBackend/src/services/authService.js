@@ -11,6 +11,10 @@ import {
     VERIF_TOKEN_EXPIRES,
     SESSION_TOKEN_EXPIRES } from '../config.js';
 
+// Los correos se guardan y buscan en minusculas y sin espacios,
+// para que "Juan@Gmail.com " y "juan@gmail.com" sean la misma cuenta
+export const normalizeEmail = (email) => String(email ?? '').trim().toLowerCase();
+
     // registerUser(data)
     // Crea un nuevo usuario de tipo Staff (doctor/admin) tras validar y encriptar su contraseña.
     // Verifica unicidad de email.
@@ -25,9 +29,9 @@ export const registerUser = async (data) => {
         birthday,
         sex,
         specialty,
-        email,
         password
     } = data;
+    const email = normalizeEmail(data.email);
     if( !name ||
         !lastName || 
         !numberPhone || 
@@ -126,7 +130,8 @@ export const verifyUser = async (id, token) => {
 // loginUser, busca usuario por email y compara claves
 // Asegura que el correo este verificado y genera un JWT de sesion de 2h
 
-export const loginUser = async(email, password) =>{
+export const loginUser = async(rawEmail, password) =>{
+    const email = normalizeEmail(rawEmail);
     // 1.- primero buscamos el usuario, el usuario es el correo.
     // passwordHash se omite por defecto; aqui lo pedimos para comparar la clave
     const user = await prisma.staff.findUnique({

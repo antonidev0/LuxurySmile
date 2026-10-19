@@ -29,7 +29,7 @@ const ask = async (question, fallback = '') => {
 
 try {
     console.log('Crear administrador de Luxury Smile\n');
-    const email = await ask('Correo: ');
+    const email = (await ask('Correo: ')).toLowerCase();
     const password = await ask('Contraseña (mín. 8 caracteres): ');
 
     if (!email || password.length < 8) {

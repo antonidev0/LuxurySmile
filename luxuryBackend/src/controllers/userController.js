@@ -4,7 +4,8 @@ import { AppError } from '../utils/AppError.js';
 import { registerUser,
         sendVerificationEmail,
         loginUser,
-        verifyUser } from "../services/authService.js";
+        verifyUser,
+        normalizeEmail } from "../services/authService.js";
 
 export const register = async (request, response, next) => {
     try {
@@ -30,7 +31,7 @@ export const register = async (request, response, next) => {
 
 export const resendVerificationEmail = async (request, response, next) => {
   try {
-    const { email } = request.body;
+    const email = normalizeEmail(request.body.email);
     if (!email) {
       throw new AppError("El correo es obligatorio", 400);
     }
