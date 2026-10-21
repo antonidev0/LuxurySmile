@@ -9,25 +9,41 @@ import { registerUser,
 
 export const register = async (request, response, next) => {
     try {
-        // primero crearemos el usuario
+        // 1.- creamos el usuario (queda guardado aunque luego falle el correo)
         const newUser = await registerUser(request.body);
 
-        // 2.- ahora enviamos la verifycacion del email
-        await sendVerificationEmail(newUser);
-        
-        // 3 respondeos con exito al front
+        // 2.- si la cuenta no se activo ya, enviamos el correo de verificacion.
+        // Un fallo del correo no deshace el alta: se avisa al admin para que lo reenvie.
+        let emailSent = false;
+        if (!newUser.verified) {
+            try {
+                await sendVerificationEmail(newUser);
+                emailSent = true;
+            } catch (error) {
+                console.error('No se pudo enviar el correo de verificacion:', error.message);
+            }
+        }
+
+        // 3.- respondemos con exito al front
         // (el token de verificacion solo viaja por correo, nunca en la respuesta)
         response.status(201).json({
-            message: 'Registro exitoso. revise su correo para verificar su cuenta.',
+            message: newUser.verified
+                ? 'Personal registrado y cuenta activada.'
+                : emailSent
+                    ? 'Personal registrado. Revise su correo para verificar su cuenta.'
+                    : 'Personal registrado, pero no se pudo enviar el correo de verificación.',
             data: {
                 id: newUser.id,
-                email: newUser.email
+                email: newUser.email,
+                role: newUser.role,
+                verified: newUser.verified,
+                emailSent
             }
         });
     } catch (error){
         next(error);
     }
-} 
+}
 
 export const resendVerificationEmail = async (request, response, next) => {
   try {

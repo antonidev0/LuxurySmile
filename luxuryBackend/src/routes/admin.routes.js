@@ -5,6 +5,7 @@ import { getAllStaff,
          getAllAppointments,
          updateAppointment,
          deleteDoctorById,
+         verifyStaffById,
          uploadAppointmentPDF,
          getAppointmentPDF } from "../controllers/adminAppointmentsController.js";
 import { authenticateJWT } from "../middlewares/authenticateJWT.js";
@@ -27,6 +28,9 @@ router.delete('/:id/assign-doctor/:doctorId', authenticateJWT, adminOnly, unassi
 
 // ruta para actualizar el estado de una cita
 router.patch('/:id/updateStatus', authenticateJWT, staffOnly, updateAppointment);
+
+// Activar a mano la cuenta de un miembro del personal
+router.patch('/staff/:id/verify', authenticateJWT, adminOnly, verifyStaffById);
 
 // Ruta para eliminar un doctor por ID
 // Esta ruta es para que el admin pueda eliminar un doctor o administrador

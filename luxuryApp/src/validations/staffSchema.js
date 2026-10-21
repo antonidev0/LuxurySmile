@@ -1,80 +1,81 @@
 import { z } from 'zod';
 
 // Expresiones regulares
-const VALIDATION_NAME = /^[A-ZÑ][a-zA-Z-ÿáéíóúñÑ]+(\s*[A-ZÑ][a-zA-Z-ÿáéíóúñÑ\s]*)$/;
-const VALIDATION_EMAIL = /^([\w.\-_]+)?\w+@[\w-_]+(\.\w+){1,}$/;
+const NAME_PART = "[A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑáéíóúñü'-]+";
+const VALIDATION_NAME = new RegExp(`^${NAME_PART}(\\s${NAME_PART})*$`);
 const ID_NUMBER = /^[0-9]{5,15}$/;
-const VALIDATION_PASSWORD = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[a-zA-Z]).{8,}$/;
+const PHONE = /^\+?\d{7,15}$/;
+const VALIDATION_PASSWORD = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}$/;
 
-// Función auxiliar para calcular la edad
-const isAdult = (date) => {
+// Edad cumplida a partir de "YYYY-MM-DD"
+const ageFrom = (value) => {
+  const [y, m, d] = value.split('-').map(Number);
   const today = new Date();
-  const birthDate = new Date(date);
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const m = today.getMonth() - birthDate.getMonth();
-
-  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-    age--;
-  }
-  
-  return age >= 18;
+  let age = today.getFullYear() - y;
+  if (today.getMonth() + 1 < m || (today.getMonth() + 1 === m && today.getDate() < d)) age--;
+  return age;
 };
 
+export const STAFF_ROLES = ['doctor', 'admin'];
 
-export const staffSchema = z.object({
-  name: z
-    .string()
-    .min(1, { message: 'El nombre es obligatorio' })
-    .regex(VALIDATION_NAME, { message: 'Ambos nombres deben empezar con mayuscula. Ejemplo: Michelle Alejandra' }),
+export const staffSchema = z
+  .object({
+    role: z.enum(STAFF_ROLES, { errorMap: () => ({ message: 'Elige el rol' }) }),
 
-  lastName: z
-    .string()
-    .min(1, { message: 'El apellido es obligatorio' })
-    .regex(VALIDATION_NAME, { message: 'Ambos apellidos deben empezar con mayuscula. Ejemplo: Rodriguez Diaz' }),
+    name: z
+      .string()
+      .trim()
+      .min(1, { message: 'El nombre es obligatorio' })
+      .regex(VALIDATION_NAME, { message: 'Cada nombre debe empezar con mayúscula. Ej: Michelle Alejandra' }),
 
-  numberId: z
-    .string()
-    .min(1, { message: 'El número de identificación es obligatorio' })
-    .regex(ID_NUMBER, { message: 'Número de identificación inválido' }),
+    lastName: z
+      .string()
+      .trim()
+      .min(1, { message: 'El apellido es obligatorio' })
+      .regex(VALIDATION_NAME, { message: 'Cada apellido debe empezar con mayúscula. Ej: Rodríguez Díaz' }),
 
-  address: z
-    .string()
-    .min(1, { message: 'La dirección es obligatoria' }),
+    numberId: z
+      .string()
+      .trim()
+      .min(1, { message: 'La cédula es obligatoria' })
+      .regex(ID_NUMBER, { message: 'Solo números, entre 5 y 15 dígitos' }),
 
-  numberPhone: z
-    .string()
-    .min(1, { message: 'El número de teléfono es obligatorio' })
-    .regex(/^\+?\d{7,15}$/, { message: 'Número de teléfono inválido' }),
+    address: z.string().trim().min(1, { message: 'La dirección es obligatoria' }),
 
-  birthday: z
-    .preprocess((arg) => {
-      if (typeof arg === 'string' || arg instanceof Date) return new Date(arg);
-    }, z.date({ required_error: 'La fecha de nacimiento es obligatoria' })
-        .refine((date) => isAdult(date), {
-        message: "Debes ser mayor de edad (18 años o más)",
-      })
-    ),
+    numberPhone: z
+      .string()
+      .trim()
+      .min(1, { message: 'El teléfono es obligatorio' })
+      .regex(PHONE, { message: 'Entre 7 y 15 dígitos, puede empezar con +. Ej: +584241234567' }),
 
-  sex: z
-    .enum(['hombre', 'mujer'], { required_error: 'El sexo es obligatorio' }),
+    // Se envía al backend como "YYYY-MM-DD"
+    birthday: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'La fecha de nacimiento es obligatoria' })
+      .refine((value) => ageFrom(value) >= 18, { message: 'Debe ser mayor de edad (18 años o más)' })
+      .refine((value) => ageFrom(value) < 100, { message: 'Revisa la fecha de nacimiento' }),
 
-  specialty: z
-    .string()
-    .min(1, { message: 'La especialidad es obligatoria' }),
+    sex: z.enum(['hombre', 'mujer'], { errorMap: () => ({ message: 'Elige una opción' }) }),
 
-  email: z
-    .string()
-    .min(1, { message: 'El correo electrónico es obligatorio' })
-    .regex(VALIDATION_EMAIL, { message: 'Correo electrónico inválido. Ejemplo example@example.com' }),
+    specialty: z.string().trim().min(1, { message: 'La especialidad o cargo es obligatorio' }),
 
-  password: z
-    .string()
-    .min(1, { message: 'La contraseña es obligatoria' })
-    .regex(VALIDATION_PASSWORD, {
-      message:
-        'La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número',
-    }),
-    confirmPassword: z.string().min(1, { message: 'Confirma tu contraseña' }),
+    email: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .min(1, { message: 'El correo es obligatorio' })
+      .email({ message: 'Correo inválido. Ej: nombre@gmail.com' }),
+
+    password: z
+      .string()
+      .regex(VALIDATION_PASSWORD, {
+        message: 'Mínimo 8 caracteres, con una mayúscula, una minúscula y un número',
+      }),
+
+    confirmPassword: z.string().min(1, { message: 'Confirma la contraseña' }),
+
+    // true: la cuenta queda activa sin esperar al correo de verificación
+    verified: z.boolean(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     path: ['confirmPassword'],

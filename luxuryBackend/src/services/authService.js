@@ -31,6 +31,10 @@ export const registerUser = async (data) => {
         specialty,
         password
     } = data;
+    // Solo se aceptan estos dos roles; cualquier otro valor se registra como doctor
+    const role = data.role === 'admin' ? 'admin' : 'doctor';
+    // El admin puede activar la cuenta en el momento, sin esperar al correo de verificacion
+    const verified = data.verified === true;
     const email = normalizeEmail(data.email);
     if( !name ||
         !lastName || 
@@ -40,6 +44,7 @@ export const registerUser = async (data) => {
         !numberId || 
         !birthday || 
         !sex || 
+        !specialty ||
         !password){
             throw new AppError('Todos los campos son obligatorios', 400);
         }
@@ -70,7 +75,9 @@ export const registerUser = async (data) => {
                 sex,
                 specialty,
                 email,
-                passwordHash
+                passwordHash,
+                role,
+                verified
             }
         });
         return newUser;

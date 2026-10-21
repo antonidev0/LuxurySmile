@@ -184,6 +184,23 @@ export const updateAppointment = async (request, response) => {
 };
 
 
+// Activar a mano la cuenta de un miembro del personal (Admin),
+// por ejemplo si no le llegó el correo de verificacion
+export const verifyStaffById = async (request, response) => {
+  try {
+    const staff = await prisma.staff.findUnique({ where: { id: request.params.id } });
+    if (!staff) {
+      return response.status(404).json({ message: "Personal no encontrado" });
+    }
+
+    const updated = await prisma.staff.update({ where: { id: staff.id }, data: { verified: true } });
+    response.status(200).json({ message: "Cuenta activada", staff: updated });
+  } catch (error) {
+    console.error("Error al activar la cuenta:", error);
+    response.status(500).json({ message: "Error al activar la cuenta" });
+  }
+};
+
 // Eliminar un doctor (Admin)
 // Se quita de todas sus citas; las completadas conservan sus datos en "completedBy"
 export const deleteDoctorById = async (request, response) => {
