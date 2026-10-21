@@ -9,7 +9,7 @@ import {
 } from "@chakra-ui/react";
 import { useRef } from "react";
 
-const ConfirmDialog = ({ isOpen, onClose, onConfirm, title, children, confirmLabel = "Confirmar", isLoading }) => {
+const ConfirmDialog = ({ isOpen, onClose, onConfirm, title, children, confirmLabel = "Confirmar", confirmColor = "red", isLoading, isConfirmDisabled }) => {
   const cancelRef = useRef(null);
   return (
     <AlertDialog isOpen={isOpen} leastDestructiveRef={cancelRef} onClose={onClose} isCentered>
@@ -21,7 +21,7 @@ const ConfirmDialog = ({ isOpen, onClose, onConfirm, title, children, confirmLab
             <Button ref={cancelRef} variant="ghost" onClick={onClose}>
               Cancelar
             </Button>
-            <Button colorScheme="red" onClick={onConfirm} isLoading={isLoading}>
+            <Button colorScheme={confirmColor} onClick={onConfirm} isLoading={isLoading} isDisabled={isConfirmDisabled}>
               {confirmLabel}
             </Button>
           </AlertDialogFooter>

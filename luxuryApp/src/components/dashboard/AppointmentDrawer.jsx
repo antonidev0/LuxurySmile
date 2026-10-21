@@ -81,7 +81,7 @@ const AppointmentDrawer = ({ appointment, isOpen, onClose, onUpdated, doctors, c
                 <Box>
                   <SectionTitle>Completada por</SectionTitle>
                   {appointment.completedBy.map((d) => (
-                    <Text key={d.email} fontSize="sm">
+                    <Text key={d.name} fontSize="sm">
                       {d.name} · {d.specialty}
                     </Text>
                   ))}

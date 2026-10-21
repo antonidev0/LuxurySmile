@@ -159,7 +159,12 @@ export const loginUser = async(rawEmail, password) =>{
         throw new AppError('Debes verificar tu correo antes de iniciar sesion', 403);
     }
 
-    // 4.- generamos token de sesion
+    // 4.- una cuenta dada de baja ya no puede entrar
+    if(user.deactivatedAt){
+        throw new AppError('Tu cuenta está desactivada. Contacta con la administración.', 403);
+    }
+
+    // 5.- generamos token de sesion
     const token = jwt.sign(
         {id: user.id, role: user.role },
         JWT_SECRET,

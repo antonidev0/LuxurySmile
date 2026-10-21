@@ -31,24 +31,11 @@ import StaffPreviewCard from "../../components/staff/StaffPreviewCard";
 import { generatePassword, passwordStrength, STRENGTH_LABELS } from "../../components/staff/passwordStrength";
 import PageHeader from "../../components/ui/PageHeader";
 import Panel from "../../components/ui/Panel";
+import { SPECIALTIES } from "../../constants/specialties";
 import { useNotify } from "../../hooks/useNotify";
 import { getErrorMessage } from "../../services/api";
 import { registerStaff } from "../../services/auth.service";
 import { staffSchema } from "../../validations/staffSchema";
-
-const SPECIALTIES = {
-  doctor: [
-    "Odontología general",
-    "Ortodoncia",
-    "Endodoncia",
-    "Periodoncia",
-    "Estética dental",
-    "Implantología",
-    "Odontopediatría",
-    "Cirugía maxilofacial",
-  ],
-  admin: ["Administración", "Recepción", "Gerencia"],
-};
 
 const DEFAULT_VALUES = {
   role: "doctor",

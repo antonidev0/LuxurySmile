@@ -3,13 +3,15 @@ import { useState } from "react";
 import { useNotify } from "../../hooks/useNotify";
 import { assignDoctor, unassignDoctor } from "../../services/appointments.service";
 import { doctorName } from "../../utils/appointments";
+import { isAvailableAt } from "../../utils/availability";
 
 // Asigna o quita doctores de una cita (solo admin)
 const DoctorAssigner = ({ appointment, doctors, onUpdated }) => {
   const notify = useNotify();
   const [saving, setSaving] = useState(false);
   const assigned = appointment.assignedDoctors ?? [];
-  const available = doctors.filter((d) => !assigned.some((a) => a.id === d.id));
+  // Los doctores dados de baja ya no reciben citas
+  const available = doctors.filter((d) => !d.deactivatedAt && !assigned.some((a) => a.id === d.id));
   const locked = appointment.status === "completada";
 
   const save = async (fn, okMessage, errorMessage) => {
@@ -57,11 +59,16 @@ const DoctorAssigner = ({ appointment, doctors, onUpdated }) => {
           isDisabled={saving}
           onChange={(e) => e.target.value && save(() => assignDoctor(appointment.id, e.target.value), "Doctor asignado", "No se pudo asignar al doctor")}
         >
-          {available.map((doc) => (
-            <option key={doc.id} value={doc.id}>
-              {doctorName(doc)} · {doc.specialty}
-            </option>
-          ))}
+          {available.map((doc) => {
+            // Solo se puede asignar a quien atiende ese día y a esa hora
+            const free = isAvailableAt(doc.availability, appointment.date, appointment.time);
+            return (
+              <option key={doc.id} value={doc.id} disabled={!free}>
+                {doctorName(doc)} · {doc.specialty}
+                {free ? "" : " (no atiende a esa hora)"}
+              </option>
+            );
+          })}
         </Select>
       )}
     </Stack>
