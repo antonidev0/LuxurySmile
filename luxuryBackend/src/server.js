@@ -2,7 +2,7 @@ import app from './app.js'; // Importamos la configuracion principal de la aplic
 import { connectDB } from './config/db.js'; // Importamos la función que conecta con PostgreSQL.
 import dotenv from 'dotenv'; // Importamos dotenv para poder leer las variables de entorno desde el archivo .env .
 dotenv.config(); // Ejecutamos dotenv para que las variables de entorno estén disponibles.
-import { JWT_SECRET, DATABASE_URL } from './config.js';
+import { JWT_SECRET, DATABASE_URL, EMAIL_USER, EMAIL_PASS } from './config.js';
 
 // Definimos el puerto donde se ejecutara el servidor, tomando primero el valor del .env si existe
 const PORT = process.env.PORT || 3003;
@@ -13,6 +13,10 @@ const startServer = async () =>{
     if (!JWT_SECRET || !DATABASE_URL) {
         console.error('Faltan variables de entorno: revisa JWT_SECRET y DATABASE_URL en tu .env (ver .env.example).');
         process.exit(1);
+    }
+    // Sin credenciales de correo el registro funciona, pero no sale el correo de verificacion
+    if (!EMAIL_USER || !EMAIL_PASS) {
+        console.warn('Aviso: faltan EMAIL_USER o EMAIL_PASS en tu .env; no se enviarán correos de verificación (prueba con "pnpm probar-correo").');
     }
     console.log('Iniciando primer proceso, por favor espere.');
     // Nos conectamos a la base de datos;

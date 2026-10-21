@@ -15,7 +15,7 @@ import {
   Tooltip,
 } from "@chakra-ui/react";
 import { useMemo, useState } from "react";
-import { FiMail, FiPhone, FiSearch, FiTrash2, FiUserPlus } from "react-icons/fi";
+import { FiCheck, FiMail, FiPhone, FiSearch, FiTrash2, FiUserPlus } from "react-icons/fi";
 import { Link } from "react-router-dom";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import EmptyState from "../../components/ui/EmptyState";
@@ -26,10 +26,10 @@ import Panel from "../../components/ui/Panel";
 import { useAppointments } from "../../hooks/useAppointments";
 import { useNotify } from "../../hooks/useNotify";
 import { useStaff } from "../../hooks/useStaff";
-import { deleteDoctor } from "../../services/staff.service";
+import { deleteDoctor, verifyStaff } from "../../services/staff.service";
 import { isActive } from "../../utils/appointments";
 
-const StaffCard = ({ person, activeCount, onDelete }) => (
+const StaffCard = ({ person, activeCount, onDelete, onVerify }) => (
   <Box p={5} borderRadius="2xl" borderWidth="1px" borderColor="border.subtle" bg="white">
     <Flex gap={3} align="flex-start">
       <Avatar name={`${person.name} ${person.lastName}`} bg={person.role === "admin" ? "gold.500" : "brand.600"} color="white" />
@@ -68,6 +68,11 @@ const StaffCard = ({ person, activeCount, onDelete }) => (
         <Text>{person.numberPhone}</Text>
       </HStack>
     </Stack>
+    {!person.verified && (
+      <Button mt={4} size="sm" w="full" variant="outline" colorScheme="green" leftIcon={<FiCheck />} onClick={() => onVerify(person)}>
+        Activar cuenta
+      </Button>
+    )}
     {person.role === "doctor" && (
       <Text mt={4} pt={3} borderTopWidth="1px" borderColor="border.subtle" fontSize="sm">
         <b>{activeCount}</b> citas activas asignadas
@@ -90,6 +95,16 @@ const StaffPage = () => {
   }, [staff, search]);
 
   const activeCount = (id) => appointments.filter((a) => isActive(a) && a.assignedDoctors?.some((d) => d.id === id)).length;
+
+  const handleVerify = async (person) => {
+    try {
+      const updated = await verifyStaff(person.id);
+      setStaff((list) => list.map((s) => (s.id === updated.id ? updated : s)));
+      notify.success("Cuenta activada", `${person.name} ${person.lastName} ya puede iniciar sesión.`);
+    } catch (err) {
+      notify.error("No se pudo activar la cuenta", err);
+    }
+  };
 
   const confirmDelete = async () => {
     setDeleting(true);
@@ -129,7 +144,7 @@ const StaffPage = () => {
         {filtered.length ? (
           <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} spacing={4}>
             {filtered.map((person) => (
-              <StaffCard key={person.id} person={person} activeCount={activeCount(person.id)} onDelete={setToDelete} />
+              <StaffCard key={person.id} person={person} activeCount={activeCount(person.id)} onDelete={setToDelete} onVerify={handleVerify} />
             ))}
           </SimpleGrid>
         ) : (

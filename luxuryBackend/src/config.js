@@ -15,7 +15,8 @@ export const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET;
 
 // Credenciales para enviar correos
 export const EMAIL_USER = process.env.EMAIL_USER;
-export const EMAIL_PASS = process.env.EMAIL_PASS;
+// Gmail muestra la contraseña de aplicación con espacios ("abcd efgh ..."); se quitan por si se copiaron
+export const EMAIL_PASS = process.env.EMAIL_PASS?.replace(/\s+/g, '');
 
 export const VERIF_TOKEN_EXPIRES = '1h'; // el correo dice "válido por 1 hora"
 export const SESSION_TOKEN_EXPIRES = '3h';

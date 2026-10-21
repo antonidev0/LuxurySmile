@@ -11,7 +11,8 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
-    "crear-admin": "node scripts/crear-admin.js"
+    "crear-admin": "node scripts/crear-admin.js",
+    "probar-correo": "node scripts/probar-correo.js"
   },
   "keywords": [],
   "author": "",
