@@ -43,6 +43,11 @@ model Staff {
   role         Role     @default(doctor)
   verified     Boolean  @default(false)
   createdAt    DateTime @default(now())
+  // Fecha de baja: la cuenta queda desactivada pero se conservan sus datos y su historial
+  deactivatedAt DateTime?
+  // Horario semanal en el que atiende citas (solo doctores), por día de la semana:
+  // { "1": { "start": "08:00", "end": "17:00" }, ... } (0 = domingo). Vacío = horario de la clínica
+  availability  Json?
 
   // Citas en las que el doctor está asignado
   appointments Appointment[] @relation("AssignedDoctors")

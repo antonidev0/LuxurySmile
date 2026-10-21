@@ -1,6 +1,8 @@
 import fs from "fs";
 import path from "path";
 import { prisma } from "../config/db.js";
+import { isAvailableAt } from "../utils/availability.js";
+import { DOCTOR_PUBLIC_FIELDS, forDoctor } from "../utils/staffPrivacy.js";
 
 // Datos de los doctores que se devuelven junto a cada cita
 const DOCTOR_FIELDS = { id: true, name: true, lastName: true, email: true, specialty: true, numberId: true };
@@ -55,6 +57,10 @@ export const assignDoctorToAppointment = async (request, response) => {
       return response.status(400).json({ message: "ID de doctor inválido" });
     }
 
+    if (doctor.deactivatedAt) {
+      return response.status(400).json({ message: "El doctor está dado de baja" });
+    }
+
     const appointment = await prisma.appointment.findUnique({
       where: { id: appointmentId },
       include: WITH_DOCTORS,
@@ -62,6 +68,10 @@ export const assignDoctorToAppointment = async (request, response) => {
 
     if (!appointment) {
       return response.status(404).json({ message: "Cita no encontrada" });
+    }
+
+    if (!isAvailableAt(doctor.availability, appointment.date, appointment.time)) {
+      return response.status(400).json({ message: "El doctor no atiende en ese día u horario" });
     }
 
     // Verificar si el doctor ya está asignado
@@ -170,13 +180,15 @@ export const updateAppointment = async (request, response) => {
       }));
     }
 
+    const isDoctor = request.user.role === "doctor";
     const updatedAppointment = await prisma.appointment.update({
       where: { id },
       data,
-      include: WITH_DOCTORS,
+      // Un doctor no ve los datos de contacto del resto del personal
+      include: isDoctor ? { assignedDoctors: { select: DOCTOR_PUBLIC_FIELDS } } : WITH_DOCTORS,
     });
 
-    response.status(200).json(updatedAppointment);
+    response.status(200).json(isDoctor ? forDoctor(updatedAppointment) : updatedAppointment);
   } catch (error) {
     console.error("Error al actualizar la cita:", error);
     response.status(500).json({ message: "Error al actualizar la cita" });
@@ -198,27 +210,6 @@ export const verifyStaffById = async (request, response) => {
   } catch (error) {
     console.error("Error al activar la cuenta:", error);
     response.status(500).json({ message: "Error al activar la cuenta" });
-  }
-};
-
-// Eliminar un doctor (Admin)
-// Se quita de todas sus citas; las completadas conservan sus datos en "completedBy"
-export const deleteDoctorById = async (request, response) => {
-  const { id } = request.params;
-
-  try {
-    const doctor = await prisma.staff.findUnique({ where: { id } });
-
-    if (!doctor || doctor.role !== 'doctor') {
-      return response.status(404).json({ message: 'Doctor no encontrado' });
-    }
-
-    await prisma.staff.delete({ where: { id } });
-
-    response.status(200).json({ message: 'Doctor eliminado correctamente' });
-  } catch (error) {
-    console.error('Error al eliminar doctor:', error);
-    response.status(500).json({ message: 'Error al eliminar doctor' });
   }
 };
 

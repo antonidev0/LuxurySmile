@@ -18,21 +18,38 @@ const ageFrom = (value) => {
 
 export const STAFF_ROLES = ['doctor', 'admin'];
 
+// Campos que comparten el alta y la edición del personal
+const nameField = z
+  .string()
+  .trim()
+  .min(1, { message: 'El nombre es obligatorio' })
+  .regex(VALIDATION_NAME, { message: 'Cada nombre debe empezar con mayúscula. Ej: Michelle Alejandra' });
+
+const lastNameField = z
+  .string()
+  .trim()
+  .min(1, { message: 'El apellido es obligatorio' })
+  .regex(VALIDATION_NAME, { message: 'Cada apellido debe empezar con mayúscula. Ej: Rodríguez Díaz' });
+
+const phoneField = z
+  .string()
+  .trim()
+  .min(1, { message: 'El teléfono es obligatorio' })
+  .regex(PHONE, { message: 'Entre 7 y 15 dígitos, puede empezar con +. Ej: +584241234567' });
+
+const emailField = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(1, { message: 'El correo es obligatorio' })
+  .email({ message: 'Correo inválido. Ej: nombre@gmail.com' });
+
 export const staffSchema = z
   .object({
     role: z.enum(STAFF_ROLES, { errorMap: () => ({ message: 'Elige el rol' }) }),
 
-    name: z
-      .string()
-      .trim()
-      .min(1, { message: 'El nombre es obligatorio' })
-      .regex(VALIDATION_NAME, { message: 'Cada nombre debe empezar con mayúscula. Ej: Michelle Alejandra' }),
-
-    lastName: z
-      .string()
-      .trim()
-      .min(1, { message: 'El apellido es obligatorio' })
-      .regex(VALIDATION_NAME, { message: 'Cada apellido debe empezar con mayúscula. Ej: Rodríguez Díaz' }),
+    name: nameField,
+    lastName: lastNameField,
 
     numberId: z
       .string()
@@ -42,11 +59,7 @@ export const staffSchema = z
 
     address: z.string().trim().min(1, { message: 'La dirección es obligatoria' }),
 
-    numberPhone: z
-      .string()
-      .trim()
-      .min(1, { message: 'El teléfono es obligatorio' })
-      .regex(PHONE, { message: 'Entre 7 y 15 dígitos, puede empezar con +. Ej: +584241234567' }),
+    numberPhone: phoneField,
 
     // Se envía al backend como "YYYY-MM-DD"
     birthday: z
@@ -59,12 +72,7 @@ export const staffSchema = z
 
     specialty: z.string().trim().min(1, { message: 'La especialidad o cargo es obligatorio' }),
 
-    email: z
-      .string()
-      .trim()
-      .toLowerCase()
-      .min(1, { message: 'El correo es obligatorio' })
-      .email({ message: 'Correo inválido. Ej: nombre@gmail.com' }),
+    email: emailField,
 
     password: z
       .string()
@@ -80,4 +88,17 @@ export const staffSchema = z
   .refine((data) => data.password === data.confirmPassword, {
     path: ['confirmPassword'],
     message: 'Las contraseñas no coinciden',
+  });
+
+// Edición de un perfil ya existente. La especialidad solo se pide (y es obligatoria) para doctores.
+export const staffEditSchema = (role) =>
+  z.object({
+    name: nameField,
+    lastName: lastNameField,
+    email: emailField,
+    numberPhone: phoneField,
+    specialty:
+      role === 'doctor'
+        ? z.string().trim().min(1, { message: 'La especialidad es obligatoria' })
+        : z.string().optional(),
   });
