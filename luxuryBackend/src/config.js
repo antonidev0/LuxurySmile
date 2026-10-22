@@ -28,3 +28,6 @@ export const PAGE_URL = process.env.PAGE_URL || CLIENT_ORIGIN;
 
 // conexion a PostgreSQL (la lee Prisma desde DATABASE_URL; usa una base distinta en produccion)
 export const DATABASE_URL = process.env.DATABASE_URL;
+
+// Zona horaria de la clínica: decide qué es "hoy" y qué horas ya pasaron, aunque el servidor esté en UTC
+export const CLINIC_TIMEZONE = process.env.CLINIC_TIMEZONE || 'America/Caracas';

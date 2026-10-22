@@ -6,7 +6,11 @@ import { getAllStaff,
          updateAppointment,
          verifyStaffById,
          uploadAppointmentPDF,
-         getAppointmentPDF } from "../controllers/adminAppointmentsController.js";
+         getAppointmentPDF,
+         rescheduleAppointment,
+         rebookAppointment,
+         getAppointmentHistory,
+         addAppointmentNote } from "../controllers/adminAppointmentsController.js";
 import { updateStaff,
          updateAvailability,
          deactivateStaff,
@@ -30,8 +34,18 @@ router.put('/:id/assign-doctor', authenticateJWT, adminOnly, assignDoctorToAppoi
 // Ruta para quitar un doctor de una cita
 router.delete('/:id/assign-doctor/:doctorId', authenticateJWT, adminOnly, unassignDoctorFromAppointment);
 
-// ruta para actualizar el estado de una cita
+// ruta para actualizar el estado de una cita (el doctor solo puede cerrar las suyas)
 router.patch('/:id/updateStatus', authenticateJWT, staffOnly, updateAppointment);
+
+// Reprogramar fecha, hora o doctores de una cita pendiente o confirmada
+router.patch('/:id/reschedule', authenticateJWT, adminOnly, rescheduleAppointment);
+
+// Nueva cita a partir de una cancelada o de una a la que el paciente no asistió
+router.post('/:id/rebook', authenticateJWT, adminOnly, rebookAppointment);
+
+// Historial de cambios y notas administrativas de la cita
+router.get('/:id/history', authenticateJWT, adminOnly, getAppointmentHistory);
+router.post('/:id/notes', authenticateJWT, adminOnly, addAppointmentNote);
 
 // Activar a mano la cuenta de un miembro del personal
 router.patch('/staff/:id/verify', authenticateJWT, adminOnly, verifyStaffById);

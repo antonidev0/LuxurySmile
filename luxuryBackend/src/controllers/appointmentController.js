@@ -1,5 +1,6 @@
 // controllers/appointmentController.js
 import { prisma } from "../config/db.js";
+import { FREE_STATUSES } from "../utils/appointmentRules.js";
 
 // Formatos que envia el formulario de citas
 const DATE_FORMAT = /^\d{4}-\d{2}-\d{2}$/;              // 2025-07-29
@@ -17,8 +18,8 @@ const toMinutes = (time) => {
 // La columna "date" solo guarda el dia; "YYYY-MM-DD" se convierte a medianoche UTC
 const toDay = (date) => new Date(`${date}T00:00:00.000Z`);
 
-// Las citas canceladas no ocupan horario
-const ACTIVE_STATUS = { not: "cancelada" };
+// Las citas canceladas (o a las que el paciente no asistió) no ocupan horario
+const ACTIVE_STATUS = { notIn: FREE_STATUSES };
 
 export const createAppointment = async (request, response) => {
   const { firstName, lastName, ci, email, time } = request.body;
@@ -64,16 +65,30 @@ export const createAppointment = async (request, response) => {
       });
     }
 
-    const newAppointment = await prisma.appointment.create({
-      data: {
-        firstName,
-        lastName,
-        ci,
-        email,
-        date: toDay(date),
-        time,
-        status: "pendiente"
-      }
+    // La solicitud y su primera entrada del historial se guardan juntas
+    const newAppointment = await prisma.$transaction(async (tx) => {
+      const created = await tx.appointment.create({
+        data: {
+          firstName,
+          lastName,
+          ci,
+          email,
+          date: toDay(date),
+          time,
+          status: "pendiente"
+        }
+      });
+      await tx.appointmentEvent.create({
+        data: {
+          appointmentId: created.id,
+          type: "creada",
+          toStatus: "pendiente",
+          toDate: created.date,
+          toTime: time,
+          actorName: "Paciente (formulario web)",
+        },
+      });
+      return created;
     });
 
     // Notificar por correo al admin y al paciente (opcional)

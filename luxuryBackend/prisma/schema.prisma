@@ -25,6 +25,16 @@ enum AppointmentStatus {
   confirmada
   cancelada
   completada
+  no_asistio
+}
+
+// Tipos de entrada del historial de una cita
+enum AppointmentEventType {
+  creada       // la cita se registró (formulario web o nueva cita a partir de otra)
+  estado       // cambio de estado (confirmar, cancelar, completar, no asistió)
+  doctores     // se asignó, cambió o retiró un doctor
+  reprogramada // cambio de fecha, hora o doctor desde el flujo de reprogramación
+  nota         // nota administrativa (no es historia clínica)
 }
 
 // Personal de la clínica: administradores y odontólogos
@@ -68,8 +78,40 @@ model Appointment {
   // para conservarlos aunque luego se elimine al doctor
   completedBy  Json?
   createdAt    DateTime          @default(now())
+  // Si la cita se creó para reagendar una cancelada o una a la que el paciente no asistió
+  previousAppointmentId String?
+  previousAppointment   Appointment?  @relation("Rebooked", fields: [previousAppointmentId], references: [id])
+  rebookedAs            Appointment[] @relation("Rebooked")
 
   assignedDoctors Staff[] @relation("AssignedDoctors")
+  events          AppointmentEvent[]
 
   @@index([date])
+}
+
+// Historial de cambios de una cita. Solo se añaden entradas: la base de datos
+// impide editarlas o borrarlas (ver la migración historial_citas).
+model AppointmentEvent {
+  id            String               @id @default(cuid())
+  appointmentId String
+  appointment   Appointment          @relation(fields: [appointmentId], references: [id], onDelete: Restrict)
+  type          AppointmentEventType
+  fromStatus    AppointmentStatus?
+  toStatus      AppointmentStatus?
+  // Copia de los doctores [{ id, name }] para que el historial no cambie si luego se edita su ficha
+  fromDoctors   Json?
+  toDoctors     Json?
+  fromDate      DateTime?            @db.Date
+  toDate        DateTime?            @db.Date
+  fromTime      String?
+  toTime        String?
+  // Motivo de cancelación o reprogramación, o el texto de la nota
+  reason        String?
+  // Quién hizo el cambio (vacío si fue el paciente desde el formulario web)
+  actorId       String?
+  actorName     String
+  actorRole     Role?
+  createdAt     DateTime             @default(now())
+
+  @@index([appointmentId, createdAt])
 }
