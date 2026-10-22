@@ -14,23 +14,32 @@ import {
   Tr,
   Tooltip,
   Icon,
+  Badge,
 } from "@chakra-ui/react";
 import { FiFileText } from "react-icons/fi";
-import { formatDay, formatTime } from "../../utils/dates";
+import { isActive } from "../../utils/appointments";
+import { formatDay, formatTime, todayKey, toDayKey } from "../../utils/dates";
 import EmptyState from "../ui/EmptyState";
 import StatusBadge from "../ui/StatusBadge";
-import StatusSelect from "./StatusSelect";
 
+// Las citas cerradas sin doctor no necesitan aviso; las abiertas sí
 const Doctors = ({ appt }) =>
   appt.assignedDoctors?.length ? (
-    <Text fontSize="sm" noOfLines={2}>
+    <Text fontSize="sm" noOfLines={2} color={isActive(appt) ? undefined : "text.muted"}>
       {appt.assignedDoctors.map((d) => `Dr. ${d.lastName}`).join(", ")}
     </Text>
   ) : (
-    <Text fontSize="sm" color="orange.600">
+    <Text fontSize="sm" color={isActive(appt) ? "orange.600" : "text.muted"} fontWeight={isActive(appt) ? 600 : 400}>
       Sin asignar
     </Text>
   );
+
+const TodayTag = ({ appt }) =>
+  toDayKey(appt.date) === todayKey() ? (
+    <Badge colorScheme="brand" variant="solid" borderRadius="full" fontSize="2xs" px={2} ml={2} textTransform="none">
+      Hoy
+    </Badge>
+  ) : null;
 
 const RecordIcon = ({ appt }) => (
   <Tooltip label={appt.historialPDF ? "Tiene historia clínica" : "Sin historia clínica"}>
@@ -42,11 +51,11 @@ const RecordIcon = ({ appt }) => (
 
 /**
  * Tabla de citas en escritorio y tarjetas en móvil.
- * Al pulsar una fila se abre la ficha (onSelect).
+ * El estado solo se muestra: los cambios se hacen desde la ficha (onSelect), con acciones explícitas.
  */
-const AppointmentsTable = ({ appointments, onSelect, onUpdated }) => {
+const AppointmentsTable = ({ appointments, onSelect, emptyTitle = "No hay citas con estos filtros", emptyDescription = "Prueba a cambiar o limpiar los filtros." }) => {
   if (!appointments.length) {
-    return <EmptyState title="No hay citas con estos filtros" description="Prueba a cambiar o limpiar los filtros." />;
+    return <EmptyState title={emptyTitle} description={emptyDescription} />;
   }
 
   return (
@@ -65,7 +74,13 @@ const AppointmentsTable = ({ appointments, onSelect, onUpdated }) => {
           </Thead>
           <Tbody>
             {appointments.map((appt) => (
-              <Tr key={appt.id} _hover={{ bg: "gray.50" }}>
+              <Tr
+                key={appt.id}
+                _hover={{ bg: "gray.50" }}
+                cursor="pointer"
+                onClick={() => onSelect(appt)}
+                opacity={isActive(appt) || appt.status === "completada" ? 1 : 0.75}
+              >
                 <Td py={3}>
                   <Text fontWeight="600">
                     {appt.firstName} {appt.lastName}
@@ -75,7 +90,10 @@ const AppointmentsTable = ({ appointments, onSelect, onUpdated }) => {
                   </Text>
                 </Td>
                 <Td whiteSpace="nowrap">
-                  <Text fontSize="sm">{formatDay(appt.date)}</Text>
+                  <Text fontSize="sm">
+                    {formatDay(appt.date)}
+                    <TodayTag appt={appt} />
+                  </Text>
                   <Text fontSize="xs" color="text.muted">
                     {formatTime(appt.time)}
                   </Text>
@@ -83,14 +101,14 @@ const AppointmentsTable = ({ appointments, onSelect, onUpdated }) => {
                 <Td maxW="200px">
                   <Doctors appt={appt} />
                 </Td>
-                <Td minW="150px">
-                  <StatusSelect appointment={appt} onUpdated={onUpdated} />
+                <Td>
+                  <StatusBadge status={appt.status} />
                 </Td>
                 <Td textAlign="center">
                   <RecordIcon appt={appt} />
                 </Td>
                 <Td textAlign="right">
-                  <Button size="sm" variant="ghost" onClick={() => onSelect(appt)}>
+                  <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); onSelect(appt); }}>
                     Ver ficha
                   </Button>
                 </Td>
@@ -114,8 +132,11 @@ const AppointmentsTable = ({ appointments, onSelect, onUpdated }) => {
               </Box>
               <StatusBadge status={appt.status} />
             </Flex>
-            <HStack fontSize="sm" color="gray.700" spacing={3} mb={2}>
-              <Text>{formatDay(appt.date)}</Text>
+            <HStack fontSize="sm" color="gray.700" spacing={3} mb={2} flexWrap="wrap">
+              <Text>
+                {formatDay(appt.date)}
+                <TodayTag appt={appt} />
+              </Text>
               <Text>·</Text>
               <Text>{formatTime(appt.time)}</Text>
               <RecordIcon appt={appt} />

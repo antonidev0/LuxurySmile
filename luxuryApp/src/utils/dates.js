@@ -46,6 +46,12 @@ export const formatTime = (time) => {
   return date.toLocaleTimeString(LOCALE, { hour: "numeric", minute: "2-digit" });
 };
 
+// Fecha y hora de un instante (p. ej. cuándo se hizo un cambio): "21 oct 2026, 3:15 p. m."
+export const formatDateTime = (value) =>
+  value
+    ? new Date(value).toLocaleString(LOCALE, { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })
+    : "";
+
 export const toMinutes = (time) => {
   const [h, m] = time.split(":").map(Number);
   return h * 60 + m;

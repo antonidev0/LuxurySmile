@@ -14,7 +14,7 @@ import { appointmentsOn } from "../../utils/appointments";
 import { formatLongDay, todayKey } from "../../utils/dates";
 
 const CalendarPage = () => {
-  const { appointments, loading, error, reload, replaceAppointment, role } = useAppointments();
+  const { appointments, loading, error, reload, refresh, replaceAppointment, addAppointment, role } = useAppointments();
   const isAdmin = role === "admin";
   const { doctors } = useStaff(isAdmin);
   const [selectedDay, setSelectedDay] = useState(todayKey);
@@ -44,7 +44,11 @@ const CalendarPage = () => {
         isOpen={drawer.isOpen}
         onClose={drawer.close}
         onUpdated={replaceAppointment}
+        onCreated={addAppointment}
+        onOpen={drawer.open}
+        onConflict={refresh}
         doctors={doctors}
+        appointments={appointments}
         canAssign={isAdmin}
       />
     </>
