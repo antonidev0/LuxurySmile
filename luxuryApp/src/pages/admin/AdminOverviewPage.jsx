@@ -28,7 +28,7 @@ import { greeting, monthKey, todayKey, toDayKey } from "../../utils/dates";
 
 const AdminOverviewPage = () => {
   const { user } = useAuth();
-  const { appointments, loading, error, reload, replaceAppointment } = useAppointments();
+  const { appointments, loading, error, reload, refresh, replaceAppointment, addAppointment } = useAppointments();
   const { doctors } = useStaff();
   const drawer = useSelectedAppointment(appointments);
 
@@ -132,7 +132,11 @@ const AdminOverviewPage = () => {
         isOpen={drawer.isOpen}
         onClose={drawer.close}
         onUpdated={replaceAppointment}
+        onCreated={addAppointment}
+        onOpen={drawer.open}
+        onConflict={refresh}
         doctors={doctors}
+        appointments={appointments}
         canAssign
       />
     </>
