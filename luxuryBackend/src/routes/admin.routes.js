@@ -9,6 +9,7 @@ import { getAllStaff,
          getAppointmentPDF,
          rescheduleAppointment,
          rebookAppointment,
+         createAdminAppointment,
          getAppointmentHistory,
          addAppointmentNote } from "../controllers/adminAppointmentsController.js";
 import { updateStaff,
@@ -42,6 +43,9 @@ router.patch('/:id/reschedule', authenticateJWT, adminOnly, rescheduleAppointmen
 
 // Nueva cita a partir de una cancelada o de una a la que el paciente no asistió
 router.post('/:id/rebook', authenticateJWT, adminOnly, rebookAppointment);
+
+// Nueva cita registrada por la administración (desde el calendario)
+router.post('/appointments', authenticateJWT, adminOnly, createAdminAppointment);
 
 // Historial de cambios y notas administrativas de la cita
 router.get('/:id/history', authenticateJWT, adminOnly, getAppointmentHistory);

@@ -62,9 +62,21 @@ const LinkedAppointment = ({ appt, onOpen }) => {
 /**
  * Ficha completa de una cita: información, paciente, gestión, notas, historial e historia clínica.
  * canAssign = admin (gestiona la cita y ve notas e historial). doctors y appointments solo se usan en el admin
- * para comprobar disponibilidad antes de guardar.
+ * para comprobar disponibilidad antes de guardar. onNewAppointment (opcional) permite crear otra cita para el mismo paciente.
  */
-const AppointmentDrawer = ({ appointment, isOpen, onClose, onUpdated, onCreated, onOpen, onConflict, doctors, appointments, canAssign = false }) => {
+const AppointmentDrawer = ({
+  appointment,
+  isOpen,
+  onClose,
+  onUpdated,
+  onCreated,
+  onOpen,
+  onConflict,
+  onNewAppointment,
+  doctors,
+  appointments,
+  canAssign = false,
+}) => {
   const history = useAppointmentHistory(appointment, canAssign && isOpen);
   // Última cancelación registrada (motivo y quién la hizo)
   const cancellation = useMemo(
@@ -164,6 +176,7 @@ const AppointmentDrawer = ({ appointment, isOpen, onClose, onUpdated, onCreated,
                     onUpdated={onUpdated}
                     onCreated={handleCreated}
                     onConflict={onConflict}
+                    onNewAppointment={onNewAppointment}
                   />
                 </Box>
 
