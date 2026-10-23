@@ -417,6 +417,63 @@ export const rebookAppointment = async (request, response, next) => {
   }
 };
 
+// Nueva cita registrada por la administración (p. ej. desde el calendario).
+// Mismas comprobaciones de agenda que al reprogramar; queda en el historial con quién la creó.
+const EMAIL_FORMAT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export const createAdminAppointment = async (request, response, next) => {
+  const reason = cleanText(request.body.reason);
+  const firstName = cleanText(request.body.firstName, 100);
+  const lastName = cleanText(request.body.lastName, 100);
+  const ci = cleanText(request.body.ci, 30).toUpperCase();
+  const email = cleanText(request.body.email, 200);
+
+  try {
+    if (!firstName || !lastName || !ci || !email) throw new AppError("Los datos del paciente son obligatorios", 400);
+    if (!EMAIL_FORMAT.test(email)) throw new AppError("Correo electrónico inválido", 400);
+    const slot = parseSlot(request.body.date, request.body.time);
+    const doctorIds = request.body.doctorIds === undefined ? [] : parseDoctorIds(request.body.doctorIds);
+
+    const created = await inScheduleTransaction(async (tx) => {
+      await assertSlotFree(tx, { date: slot.date, time: slot.time, doctorIds });
+
+      // Igual que al reagendar: con doctor asignado y horario comprobado nace confirmada; sin doctor queda pendiente
+      const status = doctorIds.length ? "confirmada" : "pendiente";
+      const result = await tx.appointment.create({
+        data: {
+          firstName,
+          lastName,
+          ci,
+          email,
+          date: slot.date,
+          time: slot.time,
+          status,
+          assignedDoctors: { connect: doctorIds.map((doctorId) => ({ id: doctorId })) },
+        },
+        include: ADMIN_INCLUDE,
+      });
+
+      await tx.appointmentEvent.create({
+        data: {
+          appointmentId: result.id,
+          type: "creada",
+          toStatus: status,
+          toDate: slot.date,
+          toTime: slot.time,
+          toDoctors: doctorSnapshot(result.assignedDoctors),
+          reason: reason || null,
+          ...(await actorOf(tx, request.user)),
+        },
+      });
+      return result;
+    });
+
+    response.status(201).json({ message: "Cita creada", appointment: created });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Historial de cambios y notas administrativas de una cita (solo admin)
 export const getAppointmentHistory = async (request, response, next) => {
   try {

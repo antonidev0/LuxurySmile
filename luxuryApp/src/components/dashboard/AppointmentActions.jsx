@@ -95,8 +95,9 @@ const Availability = ({ appointment, doctors, appointments }) => {
 /**
  * Gestión de la cita según su estado. Cada cambio es una acción explícita con confirmación.
  * El admin gestiona todo; el doctor solo puede cerrar sus citas confirmadas (completada / no asistió).
+ * onNewAppointment (opcional, admin): otra cita para el mismo paciente sin tocar esta.
  */
-const AppointmentActions = ({ appointment, isAdmin, doctors = [], appointments = [], cancellation, onUpdated, onCreated, onConflict }) => {
+const AppointmentActions = ({ appointment, isAdmin, doctors = [], appointments = [], cancellation, onUpdated, onCreated, onConflict, onNewAppointment }) => {
   const notify = useNotify();
   const [action, setAction] = useState(null);
   const [reason, setReason] = useState("");
@@ -147,6 +148,13 @@ const AppointmentActions = ({ appointment, isAdmin, doctors = [], appointments =
       </WrapItem>
     </>
   ) : null;
+
+  // Cancelada y no asistió ya ofrecen su propia "Nueva cita para el paciente" (enlazada con la original)
+  const newForPatient = isAdmin && onNewAppointment && (
+    <Button size="sm" variant="ghost" leftIcon={<FiPlus />} onClick={() => onNewAppointment(appointment)}>
+      Otra cita para el paciente
+    </Button>
+  );
 
   let content;
   if (!isAdmin) {
@@ -220,6 +228,7 @@ const AppointmentActions = ({ appointment, isAdmin, doctors = [], appointments =
             {actionButton("cancelada")}
           </WrapItem>
           {closeButtons}
+          {newForPatient && <WrapItem>{newForPatient}</WrapItem>}
         </Wrap>
         {status === "confirmada" && !due && (
           <Text fontSize="xs" color="text.muted">
@@ -230,9 +239,12 @@ const AppointmentActions = ({ appointment, isAdmin, doctors = [], appointments =
     );
   } else if (status === "completada") {
     content = (
-      <Text fontSize="sm" color="text.muted">
-        La cita está completada. Se puede consultar, pero ya no se modifica desde la agenda.
-      </Text>
+      <Stack spacing={3} align="flex-start">
+        <Text fontSize="sm" color="text.muted">
+          La cita está completada. Se puede consultar, pero ya no se modifica desde la agenda.
+        </Text>
+        {newForPatient}
+      </Stack>
     );
   } else {
     // Cancelada o no asistió: se conserva tal cual y se puede crear una cita nueva

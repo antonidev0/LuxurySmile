@@ -33,6 +33,20 @@ export const sortByDateTime = (list) =>
 
 export const isActive = (appt) => appt.status === "pendiente" || appt.status === "confirmada";
 
+// "1 cita", "2 citas"
+export const plural = (count, singular, pluralForm = `${singular}s`) => `${count} ${count === 1 ? singular : pluralForm}`;
+
+// Citas de una lista contadas una sola vez (por id): las vigentes (todas salvo las canceladas) y las canceladas aparte
+export const dayCounts = (appointments) => {
+  const unique = [...new Map(appointments.map((a) => [a.id, a])).values()];
+  const cancelled = unique.filter((a) => a.status === "cancelada").length;
+  return { active: unique.length - cancelled, cancelled, total: unique.length };
+};
+
+// Texto de los contadores: "2 citas · 1 cancelada", "1 cancelada", "Sin citas"
+export const dayCountsText = ({ active, cancelled }) =>
+  [active && plural(active, "cita"), cancelled && plural(cancelled, "cancelada")].filter(Boolean).join(" · ") || "Sin citas";
+
 export const appointmentsOn = (appointments, dayKey) =>
   sortByDateTime(appointments.filter((a) => toDayKey(a.date) === dayKey));
 

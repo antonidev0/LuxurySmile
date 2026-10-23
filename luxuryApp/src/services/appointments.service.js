@@ -36,3 +36,7 @@ export const rebookAppointment = (id, { date, time, doctorIds, reason }) =>
 export const fetchAppointmentHistory = (id) => api.get(`/api/admin/${id}/history`).then((res) => res.data);
 
 export const addAppointmentNote = (id, note) => api.post(`/api/admin/${id}/notes`, { note }).then((res) => res.data);
+
+// Nueva cita registrada por la administración (paciente nuevo o ya conocido por su cédula)
+export const createAdminAppointment = ({ firstName, lastName, ci, email, date, time, doctorIds, reason }) =>
+  api.post("/api/admin/appointments", { firstName, lastName, ci, email, date, time, doctorIds, reason }).then((res) => res.data.appointment);
