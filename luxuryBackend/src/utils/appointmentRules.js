@@ -22,8 +22,9 @@ export const FREE_STATUSES = ["cancelada", "no_asistio"];
 // Cambios de estado permitidos con las acciones ordinarias de la agenda.
 // Completada, cancelada y no asistió son estados finales: para volver a atender
 // al paciente se crea una cita nueva y la anterior se conserva tal cual.
+// Una pendiente cuyo día ya llegó también se puede cerrar directamente, por si nadie la confirmó a tiempo.
 export const TRANSITIONS = {
-  pendiente: ["confirmada", "cancelada"],
+  pendiente: ["confirmada", "cancelada", "completada", "no_asistio"],
   confirmada: ["cancelada", "completada", "no_asistio"],
   completada: [],
   cancelada: [],

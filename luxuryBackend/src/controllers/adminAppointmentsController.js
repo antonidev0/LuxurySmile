@@ -232,6 +232,11 @@ export const updateAppointment = async (request, response, next) => {
         throw new AppError("Solo se puede marcar el día de la cita o después", 400);
       }
 
+      // Para dejar constancia de quién la atendió, una cita completada necesita doctor
+      if (status === "completada" && !appointment.assignedDoctors.length) {
+        throw new AppError("Asigna el doctor que atendió al paciente antes de marcar la cita como completada", 400);
+      }
+
       if (status === "cancelada" && !reason) {
         throw new AppError("Indica el motivo de la cancelación", 400);
       }
