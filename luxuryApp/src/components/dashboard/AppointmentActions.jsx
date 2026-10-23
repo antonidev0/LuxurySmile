@@ -126,11 +126,11 @@ const AppointmentActions = ({ appointment, isAdmin, doctors = [], appointments =
     }
   };
 
-  const actionButton = (to) => {
+  const actionButton = (to, isDisabled = false) => {
     const meta = STATUS_ACTIONS[to];
     const Icon = meta.icon;
     return (
-      <Button size="sm" variant="outline" colorScheme={meta.color} leftIcon={<Icon />} onClick={() => ask(to)}>
+      <Button size="sm" variant="outline" colorScheme={meta.color} leftIcon={<Icon />} onClick={() => ask(to)} isDisabled={isDisabled}>
         {meta.label}
       </Button>
     );
@@ -139,7 +139,8 @@ const AppointmentActions = ({ appointment, isAdmin, doctors = [], appointments =
   const closeButtons = due ? (
     <>
       <WrapItem>
-        {actionButton("completada")}
+        {/* Completada necesita el doctor que atendió */}
+        {actionButton("completada", !assigned.length)}
       </WrapItem>
       <WrapItem>
         {actionButton("no_asistio")}
@@ -150,7 +151,7 @@ const AppointmentActions = ({ appointment, isAdmin, doctors = [], appointments =
   let content;
   if (!isAdmin) {
     content =
-      status === "confirmada" && due ? (
+      (status === "confirmada" || status === "pendiente") && due ? (
         <Wrap spacing={2}>{closeButtons}</Wrap>
       ) : (
         <Text fontSize="sm" color="text.muted">
@@ -184,7 +185,9 @@ const AppointmentActions = ({ appointment, isAdmin, doctors = [], appointments =
         {status === "pendiente" && past && (
           <Alert status="warning" borderRadius="xl">
             <AlertIcon />
-            <AlertDescription fontSize="sm">La fecha de esta solicitud ya pasó. Reprográmala a un horario futuro o cancélala.</AlertDescription>
+            <AlertDescription fontSize="sm">
+              La fecha de esta solicitud ya pasó sin confirmarse. Puedes marcar si el paciente vino (completada, con el doctor que lo atendió) o no asistió, reprogramarla o cancelarla.
+            </AlertDescription>
           </Alert>
         )}
         {status === "pendiente" && assigned.length > 0 && !past && doctorIssue && (
@@ -216,7 +219,7 @@ const AppointmentActions = ({ appointment, isAdmin, doctors = [], appointments =
           <WrapItem>
             {actionButton("cancelada")}
           </WrapItem>
-          {status === "confirmada" && closeButtons}
+          {closeButtons}
         </Wrap>
         {status === "confirmada" && !due && (
           <Text fontSize="xs" color="text.muted">
