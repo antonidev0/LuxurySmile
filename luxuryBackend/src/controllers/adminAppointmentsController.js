@@ -8,6 +8,7 @@ import {
   DOCTOR_FIELDS,
   doctorSnapshot,
   inScheduleTransaction,
+  TRANSACTION_OPTIONS,
 } from "../services/appointmentService.js";
 import { AppError } from "../utils/AppError.js";
 import {
@@ -500,7 +501,7 @@ export const addAppointmentNote = async (request, response, next) => {
       return tx.appointmentEvent.create({
         data: { appointmentId: appointment.id, type: "nota", reason: note, ...(await actorOf(tx, request.user)) },
       });
-    });
+    }, TRANSACTION_OPTIONS);
     response.status(201).json(event);
   } catch (error) {
     next(error);

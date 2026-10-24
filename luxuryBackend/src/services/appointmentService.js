@@ -28,12 +28,24 @@ export const actorOf = async (tx, user) => {
   return { actorId: user.id, actorName: staff ? `${staff.name} ${staff.lastName}` : "Usuario", actorRole: staff?.role ?? user.role };
 };
 
+// Tiempos de las transacciones interactivas. Los 5 s que Prisma da por defecto se quedan cortos con una
+// base de datos remota: cada consulta es un viaje de ida y vuelta y, si se agota el tiempo a mitad,
+// Prisma cierra la transacción y la siguiente consulta falla con P2028 ("Transaction not found").
+export const TRANSACTION_OPTIONS = { maxWait: 10_000, timeout: 20_000 };
+
 // Ejecuta fn en una transacción serializable: dos cambios simultáneos no pueden dejar citas solapadas
 export const inScheduleTransaction = async (fn) => {
   for (let attempt = 0; ; attempt += 1) {
     try {
-      return await prisma.$transaction(fn, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+      return await prisma.$transaction(fn, {
+        ...TRANSACTION_OPTIONS,
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      });
     } catch (error) {
+      // La transacción se agotó y Prisma la deshizo: no se guardó nada
+      if (error?.code === "P2028") {
+        throw new AppError("La base de datos tardó demasiado en responder y no se guardó el cambio. Vuelve a intentarlo.", 503);
+      }
       if (error?.code !== "P2034") throw error;
       if (attempt >= 2) throw new AppError("Otra persona modificó la agenda al mismo tiempo. Vuelve a intentarlo.", 409);
     }
