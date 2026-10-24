@@ -8,6 +8,7 @@ import {
   DOCTOR_FIELDS,
   doctorSnapshot,
   inScheduleTransaction,
+  loadForAdmin,
   TRANSACTION_OPTIONS,
 } from "../services/appointmentService.js";
 import { AppError } from "../utils/AppError.js";
@@ -95,7 +96,8 @@ export const assignDoctorToAppointment = async (request, response, next) => {
   }
 
   try {
-    const updated = await inScheduleTransaction(async (tx) => {
+    const actor = await actorOf(request.user);
+    await inScheduleTransaction(async (tx) => {
       const appointment = await tx.appointment.findUnique({ where: { id: appointmentId }, include: WITH_DOCTORS });
       if (!appointment) throw new AppError("Cita no encontrada", 404);
       if (!OPEN_STATUSES.includes(appointment.status)) throw closedError(appointment.status);
@@ -107,7 +109,7 @@ export const assignDoctorToAppointment = async (request, response, next) => {
       }
 
       // Activo, con horario a esa hora y sin otra cita que se solape
-      await assertSlotFree(tx, {
+      const [doctor] = await assertSlotFree(tx, {
         date: appointment.date,
         time: appointment.time,
         doctorIds: [doctorId],
@@ -115,7 +117,7 @@ export const assignDoctorToAppointment = async (request, response, next) => {
         clinicGap: false,
       });
 
-      const result = await tx.appointment.update({
+      await tx.appointment.update({
         where: { id: appointmentId },
         data: {
           assignedDoctors: {
@@ -123,20 +125,21 @@ export const assignDoctorToAppointment = async (request, response, next) => {
             ...(replaceDoctorId ? { disconnect: { id: replaceDoctorId } } : {}),
           },
         },
-        include: ADMIN_INCLUDE,
+        select: { id: true },
       });
 
+      const remaining = appointment.assignedDoctors.filter((d) => d.id !== replaceDoctorId);
       await tx.appointmentEvent.create({
         data: {
           appointmentId,
           type: "doctores",
           fromDoctors: doctorSnapshot(appointment.assignedDoctors),
-          toDoctors: doctorSnapshot(result.assignedDoctors),
-          ...(await actorOf(tx, request.user)),
+          toDoctors: doctorSnapshot([...remaining, doctor]),
+          ...actor,
         },
       });
-      return result;
     });
+    const updated = await loadForAdmin(appointmentId);
 
     return response.status(200).json({
       message: replaceDoctorId ? "Doctor cambiado exitosamente" : "Doctor asignado exitosamente",
@@ -153,7 +156,8 @@ export const unassignDoctorFromAppointment = async (request, response, next) => 
   const { id, doctorId } = request.params;
 
   try {
-    const updated = await inScheduleTransaction(async (tx) => {
+    const actor = await actorOf(request.user);
+    await inScheduleTransaction(async (tx) => {
       const appointment = await tx.appointment.findUnique({ where: { id }, include: WITH_DOCTORS });
       if (!appointment) throw new AppError("Cita no encontrada", 404);
       if (!OPEN_STATUSES.includes(appointment.status)) throw closedError(appointment.status);
@@ -163,10 +167,10 @@ export const unassignDoctorFromAppointment = async (request, response, next) => 
         throw new AppError("Una cita confirmada necesita un doctor. Usa «Cambiar» para sustituirlo por otro.", 400);
       }
 
-      const result = await tx.appointment.update({
+      await tx.appointment.update({
         where: { id },
         data: { assignedDoctors: { disconnect: { id: doctorId } } },
-        include: ADMIN_INCLUDE,
+        select: { id: true },
       });
 
       await tx.appointmentEvent.create({
@@ -174,12 +178,12 @@ export const unassignDoctorFromAppointment = async (request, response, next) => 
           appointmentId: id,
           type: "doctores",
           fromDoctors: doctorSnapshot(appointment.assignedDoctors),
-          toDoctors: doctorSnapshot(result.assignedDoctors),
-          ...(await actorOf(tx, request.user)),
+          toDoctors: doctorSnapshot(appointment.assignedDoctors.filter((d) => d.id !== doctorId)),
+          ...actor,
         },
       });
-      return result;
     });
+    const updated = await loadForAdmin(id);
 
     return response.status(200).json({ message: "Doctor retirado de la cita", appointment: updated });
   } catch (error) {
@@ -212,7 +216,8 @@ export const updateAppointment = async (request, response, next) => {
   }
 
   try {
-    const updatedAppointment = await inScheduleTransaction(async (tx) => {
+    const actor = await actorOf(request.user);
+    await inScheduleTransaction(async (tx) => {
       const appointment = await tx.appointment.findUnique({ where: { id }, include: WITH_DOCTORS });
       if (!appointment) throw new AppError("Cita no encontrada", 404);
 
@@ -270,12 +275,7 @@ export const updateAppointment = async (request, response, next) => {
         }));
       }
 
-      const result = await tx.appointment.update({
-        where: { id },
-        data,
-        // Un doctor no ve los datos de contacto del resto del personal
-        include: isDoctor ? { assignedDoctors: { select: DOCTOR_PUBLIC_FIELDS } } : ADMIN_INCLUDE,
-      });
+      await tx.appointment.update({ where: { id }, data, select: { id: true } });
 
       await tx.appointmentEvent.create({
         data: {
@@ -284,12 +284,15 @@ export const updateAppointment = async (request, response, next) => {
           fromStatus: appointment.status,
           toStatus: status,
           reason: reason || null,
-          ...(await actorOf(tx, request.user)),
+          ...actor,
         },
       });
-      return result;
     });
 
+    // Un doctor no ve los datos de contacto del resto del personal
+    const updatedAppointment = isDoctor
+      ? await prisma.appointment.findUnique({ where: { id }, include: { assignedDoctors: { select: DOCTOR_PUBLIC_FIELDS } } })
+      : await loadForAdmin(id);
     response.status(200).json(isDoctor ? forDoctor(updatedAppointment) : updatedAppointment);
   } catch (error) {
     next(error);
@@ -304,8 +307,9 @@ export const rescheduleAppointment = async (request, response, next) => {
 
   try {
     const slot = parseSlot(request.body.date, request.body.time);
+    const actor = await actorOf(request.user);
 
-    const updated = await inScheduleTransaction(async (tx) => {
+    await inScheduleTransaction(async (tx) => {
       const appointment = await tx.appointment.findUnique({ where: { id }, include: WITH_DOCTORS });
       if (!appointment) throw new AppError("Cita no encontrada", 404);
       if (!OPEN_STATUSES.includes(appointment.status)) throw closedError(appointment.status);
@@ -320,7 +324,7 @@ export const rescheduleAppointment = async (request, response, next) => {
         throw new AppError("Una cita confirmada necesita al menos un doctor", 400);
       }
 
-      await assertSlotFree(tx, {
+      const doctors = await assertSlotFree(tx, {
         date: slot.date,
         time: slot.time,
         doctorIds,
@@ -328,10 +332,10 @@ export const rescheduleAppointment = async (request, response, next) => {
         clinicGap: slotChanged,
       });
 
-      const result = await tx.appointment.update({
+      await tx.appointment.update({
         where: { id },
         data: { date: slot.date, time: slot.time, assignedDoctors: { set: doctorIds.map((doctorId) => ({ id: doctorId })) } },
-        include: ADMIN_INCLUDE,
+        select: { id: true },
       });
 
       await tx.appointmentEvent.create({
@@ -343,14 +347,14 @@ export const rescheduleAppointment = async (request, response, next) => {
           fromTime: appointment.time,
           toTime: slot.time,
           ...(doctorsChanged
-            ? { fromDoctors: doctorSnapshot(appointment.assignedDoctors), toDoctors: doctorSnapshot(result.assignedDoctors) }
+            ? { fromDoctors: doctorSnapshot(appointment.assignedDoctors), toDoctors: doctorSnapshot(doctors) }
             : {}),
           reason: reason || null,
-          ...(await actorOf(tx, request.user)),
+          ...actor,
         },
       });
-      return result;
     });
+    const updated = await loadForAdmin(id);
 
     response.status(200).json({ message: "Cita reprogramada", appointment: updated });
   } catch (error) {
@@ -367,8 +371,9 @@ export const rebookAppointment = async (request, response, next) => {
   try {
     const slot = parseSlot(request.body.date, request.body.time);
     const doctorIds = request.body.doctorIds === undefined ? [] : parseDoctorIds(request.body.doctorIds);
+    const actor = await actorOf(request.user);
 
-    const created = await inScheduleTransaction(async (tx) => {
+    const createdId = await inScheduleTransaction(async (tx) => {
       const source = await tx.appointment.findUnique({ where: { id } });
       if (!source) throw new AppError("Cita no encontrada", 404);
       if (source.status !== "cancelada" && source.status !== "no_asistio") {
@@ -378,7 +383,7 @@ export const rebookAppointment = async (request, response, next) => {
         );
       }
 
-      await assertSlotFree(tx, { date: slot.date, time: slot.time, doctorIds });
+      const doctors = await assertSlotFree(tx, { date: slot.date, time: slot.time, doctorIds });
 
       // Con doctor asignado y horario comprobado, la cita nace confirmada; sin doctor queda pendiente
       const status = doctorIds.length ? "confirmada" : "pendiente";
@@ -394,7 +399,7 @@ export const rebookAppointment = async (request, response, next) => {
           previousAppointmentId: source.id,
           assignedDoctors: { connect: doctorIds.map((doctorId) => ({ id: doctorId })) },
         },
-        include: ADMIN_INCLUDE,
+        select: { id: true },
       });
 
       await tx.appointmentEvent.create({
@@ -404,13 +409,14 @@ export const rebookAppointment = async (request, response, next) => {
           toStatus: status,
           toDate: slot.date,
           toTime: slot.time,
-          toDoctors: doctorSnapshot(result.assignedDoctors),
+          toDoctors: doctorSnapshot(doctors),
           reason: reason || null,
-          ...(await actorOf(tx, request.user)),
+          ...actor,
         },
       });
-      return result;
+      return result.id;
     });
+    const created = await loadForAdmin(createdId);
 
     response.status(201).json({ message: "Nueva cita creada", appointment: created });
   } catch (error) {
@@ -434,9 +440,10 @@ export const createAdminAppointment = async (request, response, next) => {
     if (!EMAIL_FORMAT.test(email)) throw new AppError("Correo electrónico inválido", 400);
     const slot = parseSlot(request.body.date, request.body.time);
     const doctorIds = request.body.doctorIds === undefined ? [] : parseDoctorIds(request.body.doctorIds);
+    const actor = await actorOf(request.user);
 
-    const created = await inScheduleTransaction(async (tx) => {
-      await assertSlotFree(tx, { date: slot.date, time: slot.time, doctorIds });
+    const createdId = await inScheduleTransaction(async (tx) => {
+      const doctors = await assertSlotFree(tx, { date: slot.date, time: slot.time, doctorIds });
 
       // Igual que al reagendar: con doctor asignado y horario comprobado nace confirmada; sin doctor queda pendiente
       const status = doctorIds.length ? "confirmada" : "pendiente";
@@ -451,7 +458,7 @@ export const createAdminAppointment = async (request, response, next) => {
           status,
           assignedDoctors: { connect: doctorIds.map((doctorId) => ({ id: doctorId })) },
         },
-        include: ADMIN_INCLUDE,
+        select: { id: true },
       });
 
       await tx.appointmentEvent.create({
@@ -461,13 +468,14 @@ export const createAdminAppointment = async (request, response, next) => {
           toStatus: status,
           toDate: slot.date,
           toTime: slot.time,
-          toDoctors: doctorSnapshot(result.assignedDoctors),
+          toDoctors: doctorSnapshot(doctors),
           reason: reason || null,
-          ...(await actorOf(tx, request.user)),
+          ...actor,
         },
       });
-      return result;
+      return result.id;
     });
+    const created = await loadForAdmin(createdId);
 
     response.status(201).json({ message: "Cita creada", appointment: created });
   } catch (error) {
@@ -494,12 +502,13 @@ export const addAppointmentNote = async (request, response, next) => {
   try {
     const note = cleanText(request.body.note, 1000);
     if (!note) throw new AppError("Escribe la nota", 400);
+    const actor = await actorOf(request.user);
 
     const event = await prisma.$transaction(async (tx) => {
       const appointment = await tx.appointment.findUnique({ where: { id: request.params.id }, select: { id: true } });
       if (!appointment) throw new AppError("Cita no encontrada", 404);
       return tx.appointmentEvent.create({
-        data: { appointmentId: appointment.id, type: "nota", reason: note, ...(await actorOf(tx, request.user)) },
+        data: { appointmentId: appointment.id, type: "nota", reason: note, ...actor },
       });
     }, TRANSACTION_OPTIONS);
     response.status(201).json(event);
