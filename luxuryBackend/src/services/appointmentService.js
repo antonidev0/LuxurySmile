@@ -17,23 +17,39 @@ export const ADMIN_INCLUDE = {
   rebookedAs: { select: LINKED_FIELDS, orderBy: { createdAt: "asc" } },
 };
 
+// Cita con todos los datos que ve el admin. Se carga después del commit para no alargar la transacción.
+export const loadForAdmin = (id) => prisma.appointment.findUnique({ where: { id }, include: ADMIN_INCLUDE });
+
 export const doctorLabel = (doctor) => `Dr. ${doctor.name} ${doctor.lastName}`;
 
 // Copia de los doctores para el historial
 export const doctorSnapshot = (doctors) => doctors.map((d) => ({ id: d.id, name: `${d.name} ${d.lastName}` }));
 
-// Quién hace el cambio, con su nombre copiado para que el historial no dependa de su ficha
-export const actorOf = async (tx, user) => {
-  const staff = await tx.staff.findUnique({ where: { id: user.id }, select: { name: true, lastName: true, role: true } });
+// Quién hace el cambio, con su nombre copiado para que el historial no dependa de su ficha.
+// Se lee antes de abrir la transacción: no forma parte de la agenda y así no la alarga.
+export const actorOf = async (user) => {
+  const staff = await prisma.staff.findUnique({ where: { id: user.id }, select: { name: true, lastName: true, role: true } });
   return { actorId: user.id, actorName: staff ? `${staff.name} ${staff.lastName}` : "Usuario", actorRole: staff?.role ?? user.role };
 };
+
+// Tiempos de las transacciones interactivas. Las transacciones solo hacen las consultas que protegen la
+// agenda, pero con una base de datos remota cada una es un viaje de ida y vuelta: este margen evita que
+// Prisma las cierre a mitad (P2028, "Transaction not found") con los 5 s que da por defecto.
+export const TRANSACTION_OPTIONS = { maxWait: 5_000, timeout: 15_000 };
 
 // Ejecuta fn en una transacción serializable: dos cambios simultáneos no pueden dejar citas solapadas
 export const inScheduleTransaction = async (fn) => {
   for (let attempt = 0; ; attempt += 1) {
     try {
-      return await prisma.$transaction(fn, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+      return await prisma.$transaction(fn, {
+        ...TRANSACTION_OPTIONS,
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      });
     } catch (error) {
+      // La transacción se agotó y Prisma la deshizo: no se guardó nada
+      if (error?.code === "P2028") {
+        throw new AppError("La base de datos tardó demasiado en responder y no se guardó el cambio. Vuelve a intentarlo.", 503);
+      }
       if (error?.code !== "P2034") throw error;
       if (attempt >= 2) throw new AppError("Otra persona modificó la agenda al mismo tiempo. Vuelve a intentarlo.", 409);
     }

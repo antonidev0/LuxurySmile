@@ -1,5 +1,6 @@
 // controllers/appointmentController.js
 import { prisma } from "../config/db.js";
+import { TRANSACTION_OPTIONS } from "../services/appointmentService.js";
 import { FREE_STATUSES } from "../utils/appointmentRules.js";
 
 // Formatos que envia el formulario de citas
@@ -89,7 +90,7 @@ export const createAppointment = async (request, response) => {
         },
       });
       return created;
-    });
+    }, TRANSACTION_OPTIONS);
 
     // Notificar por correo al admin y al paciente (opcional)
     // await sendEmailNotification(email, 'Cita solicitada', 'Tu cita ha sido registrada...');
