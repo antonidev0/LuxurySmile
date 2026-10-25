@@ -56,8 +56,8 @@ const FEATURED = [
 
 const FAQ = [
   { q: "¿Cuánto dura la primera consulta?", a: "Alrededor de 40 minutos. Incluye evaluación, diagnóstico y la propuesta de tratamiento." },
-  { q: "¿Puedo agendar para hoy?", a: "Sí, si hay horarios libres. El formulario solo te muestra las horas disponibles de lunes a sábado." },
-  { q: "¿Cómo sé que mi cita está confirmada?", a: "La clínica revisa tu solicitud y te contacta por correo para confirmarla y asignarte un especialista." },
+  { q: "¿Cómo pido una cita?", a: "Escríbenos por WhatsApp o llámanos de lunes a sábado. Nuestro equipo revisa los horarios libres y agenda tu cita." },
+  { q: "¿Puedo ir hoy mismo?", a: "Si hay horarios libres, sí. Contáctanos y te diremos qué horas quedan disponibles para hoy." },
   { q: "¿Las limpiezas duelen?", a: "No. Usamos ultrasonido y técnicas suaves; la mayoría de pacientes solo siente una ligera vibración." },
 ];
 

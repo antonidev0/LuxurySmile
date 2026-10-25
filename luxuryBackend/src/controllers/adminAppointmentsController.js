@@ -424,60 +424,88 @@ export const rebookAppointment = async (request, response, next) => {
   }
 };
 
-// Nueva cita registrada por la administración (p. ej. desde el calendario).
+// Nueva cita registrada por el personal (admin o doctor). Las citas solo se crean desde el panel:
+// la web pública es informativa y ya no tiene formulario de reserva.
 // Mismas comprobaciones de agenda que al reprogramar; queda en el historial con quién la creó.
 const EMAIL_FORMAT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export const createAdminAppointment = async (request, response, next) => {
+// Valida los datos del paciente y el horario y guarda la cita con su primera entrada del historial.
+// doctorIds lo decide el endpoint según el rol autenticado. Devuelve el id de la cita creada.
+const createStaffAppointment = async (request, doctorIds) => {
   const reason = cleanText(request.body.reason);
   const firstName = cleanText(request.body.firstName, 100);
   const lastName = cleanText(request.body.lastName, 100);
   const ci = cleanText(request.body.ci, 30).toUpperCase();
   const email = cleanText(request.body.email, 200);
 
-  try {
-    if (!firstName || !lastName || !ci || !email) throw new AppError("Los datos del paciente son obligatorios", 400);
-    if (!EMAIL_FORMAT.test(email)) throw new AppError("Correo electrónico inválido", 400);
-    const slot = parseSlot(request.body.date, request.body.time);
-    const doctorIds = request.body.doctorIds === undefined ? [] : parseDoctorIds(request.body.doctorIds);
-    const actor = await actorOf(request.user);
+  if (!firstName || !lastName || !ci || !email) throw new AppError("Los datos del paciente son obligatorios", 400);
+  if (!EMAIL_FORMAT.test(email)) throw new AppError("Correo electrónico inválido", 400);
+  const slot = parseSlot(request.body.date, request.body.time);
+  const actor = await actorOf(request.user);
 
-    const createdId = await inScheduleTransaction(async (tx) => {
-      const doctors = await assertSlotFree(tx, { date: slot.date, time: slot.time, doctorIds });
+  return inScheduleTransaction(async (tx) => {
+    const doctors = await assertSlotFree(tx, { date: slot.date, time: slot.time, doctorIds });
 
-      // Igual que al reagendar: con doctor asignado y horario comprobado nace confirmada; sin doctor queda pendiente
-      const status = doctorIds.length ? "confirmada" : "pendiente";
-      const result = await tx.appointment.create({
-        data: {
-          firstName,
-          lastName,
-          ci,
-          email,
-          date: slot.date,
-          time: slot.time,
-          status,
-          assignedDoctors: { connect: doctorIds.map((doctorId) => ({ id: doctorId })) },
-        },
-        select: { id: true },
-      });
-
-      await tx.appointmentEvent.create({
-        data: {
-          appointmentId: result.id,
-          type: "creada",
-          toStatus: status,
-          toDate: slot.date,
-          toTime: slot.time,
-          toDoctors: doctorSnapshot(doctors),
-          reason: reason || null,
-          ...actor,
-        },
-      });
-      return result.id;
+    // Igual que al reagendar: con doctor asignado y horario comprobado nace confirmada; sin doctor queda pendiente
+    const status = doctorIds.length ? "confirmada" : "pendiente";
+    const result = await tx.appointment.create({
+      data: {
+        firstName,
+        lastName,
+        ci,
+        email,
+        date: slot.date,
+        time: slot.time,
+        status,
+        assignedDoctors: { connect: doctorIds.map((doctorId) => ({ id: doctorId })) },
+      },
+      select: { id: true },
     });
+
+    await tx.appointmentEvent.create({
+      data: {
+        appointmentId: result.id,
+        type: "creada",
+        toStatus: status,
+        toDate: slot.date,
+        toTime: slot.time,
+        toDoctors: doctorSnapshot(doctors),
+        reason: reason || null,
+        ...actor,
+      },
+    });
+    return result.id;
+  });
+};
+
+// El admin crea citas para cualquier doctor (o sin doctor, pendientes de asignar)
+export const createAdminAppointment = async (request, response, next) => {
+  try {
+    const doctorIds = request.body.doctorIds === undefined ? [] : parseDoctorIds(request.body.doctorIds);
+    const createdId = await createStaffAppointment(request, doctorIds);
     const created = await loadForAdmin(createdId);
 
     response.status(201).json({ message: "Cita creada", appointment: created });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// El doctor solo crea citas en su propia agenda: el doctor asignado es siempre el de la sesión,
+// nunca un id enviado desde el navegador. Si pide asignar a otro doctor, se rechaza.
+export const createDoctorAppointment = async (request, response, next) => {
+  try {
+    const requested = request.body.doctorIds === undefined ? [] : parseDoctorIds(request.body.doctorIds);
+    if (requested.some((id) => id !== request.user.id)) {
+      throw new AppError("Solo puedes crear citas en tu propia agenda", 403);
+    }
+    const createdId = await createStaffAppointment(request, [request.user.id]);
+    const created = await prisma.appointment.findUnique({
+      where: { id: createdId },
+      include: { assignedDoctors: { select: DOCTOR_PUBLIC_FIELDS } },
+    });
+
+    response.status(201).json({ message: "Cita creada", appointment: forDoctor(created) });
   } catch (error) {
     next(error);
   }

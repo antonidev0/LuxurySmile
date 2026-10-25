@@ -45,9 +45,6 @@ const Footer = () => (
                 {link.label}
               </Link>
             ))}
-            <Link as={RouterLink} to="/agendar" color="whiteAlpha.800" _hover={{ color: "white" }}>
-              Agendar cita
-            </Link>
             <Link as={RouterLink} to="/login" color="whiteAlpha.800" _hover={{ color: "white" }}>
               Acceso personal
             </Link>

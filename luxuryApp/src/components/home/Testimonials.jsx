@@ -6,7 +6,7 @@ import SectionHeading from "../ui/SectionHeading";
 // Textos de ejemplo: sustituir por reseñas reales de pacientes
 const TESTIMONIALS = [
   { name: "María G.", treatment: "Diseño de sonrisa", text: "Me explicaron todo con mucha paciencia y el resultado es tan natural que nadie cree que son carillas." },
-  { name: "Luis R.", treatment: "Ortodoncia invisible", text: "Agendé en línea, me atendieron puntual y el seguimiento ha sido impecable. Muy recomendados." },
+  { name: "Luis R.", treatment: "Ortodoncia invisible", text: "Me atendieron puntual y el seguimiento ha sido impecable. Muy recomendados." },
   { name: "Andrea P.", treatment: "Limpieza y blanqueamiento", text: "Tenía miedo al dentista y aquí fue totalmente distinto: cero dolor y un trato muy humano." },
 ];
 

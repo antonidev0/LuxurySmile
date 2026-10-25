@@ -4,7 +4,6 @@ import cors from "cors";
 import dontev from "dotenv";
 import userRoutes from "../src/routes/user.routes.js";
 import authRoutes from "../src/routes/auth.js";
-import appointment from "../src/routes/appointment.routes.js";
 import adminRoutes from "../src/routes/admin.routes.js";
 import pdfRoutes from "../src/routes/pdf.routes.js";
 import doctorRoutes from "../src/routes/doctor.routes.js";
@@ -31,7 +30,8 @@ app.use(cors({
 app.use("/api/pdf", pdfRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/auth', authRoutes);
-app.use('/api/appointment', appointment);
+// La antigua ruta publica /api/appointment (reserva desde la web) se retiro:
+// las citas solo las crea el personal autenticado (POST /api/admin/appointments y POST /api/doctor/appointments)
 app.use('/api/admin', adminRoutes);
 app.use('/api/doctor', doctorRoutes);
 

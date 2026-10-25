@@ -3,8 +3,8 @@ import Reveal from "../ui/Reveal";
 import SectionHeading from "../ui/SectionHeading";
 
 const STEPS = [
-  { title: "Solicita tu cita", text: "Elige día y hora disponibles en línea, en menos de un minuto." },
-  { title: "Te confirmamos", text: "La clínica revisa tu solicitud y te asigna al especialista indicado." },
+  { title: "Contáctanos", text: "Escríbenos por WhatsApp, llámanos o visítanos y te orientamos sobre tu caso." },
+  { title: "Te agendamos", text: "Nuestro equipo coordina tu cita con el especialista indicado." },
   { title: "Evaluación", text: "Diagnóstico completo y un plan de tratamiento claro, con presupuesto." },
   { title: "Tu nueva sonrisa", text: "Tratamiento y seguimiento con tu historia clínica siempre al día." },
 ];
