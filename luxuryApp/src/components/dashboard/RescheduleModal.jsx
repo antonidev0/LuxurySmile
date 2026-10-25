@@ -25,14 +25,20 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useNotify } from "../../hooks/useNotify";
 import { getErrorMessage } from "../../services/api";
-import { createAdminAppointment, rebookAppointment, rescheduleAppointment } from "../../services/appointments.service";
+import {
+  createAdminAppointment,
+  createDoctorAppointment,
+  fetchOccupiedTimes,
+  rebookAppointment,
+  rescheduleAppointment,
+} from "../../services/appointments.service";
 import { assignableDoctors, doctorConflict, doctorName, fullName, occupiesSlot } from "../../utils/appointments";
 import { formatLongDay, formatTime, fromDayKey, todayKey, toDayKey } from "../../utils/dates";
 import { buildSlots } from "../../utils/slots";
 import { appointmentSchema } from "../../validations/appointmentSchema";
 import TimeSlotPicker from "../booking/TimeSlotPicker";
 
-// Datos del paciente con las mismas reglas que el formulario de reserva
+// Datos del paciente con las mismas validaciones de siempre
 const patientSchema = appointmentSchema.pick({ firstName: true, lastName: true, ci: true, email: true });
 const EMPTY_PATIENT = { firstName: "", lastName: "", ci: "", email: "" };
 const PATIENT_FIELDS = [
@@ -62,8 +68,10 @@ const Summary = ({ label, date, time, doctors }) => (
  * mode "reschedule": mueve una cita pendiente o confirmada.
  * mode "rebook": crea una cita nueva a partir de una cancelada o a la que el paciente no asistió;
  * la original no se toca y conserva su registro.
- * mode "create": registra una cita nueva desde la administración. Con patient (datos de una cita del
+ * mode "create": registra una cita nueva desde el panel. Con patient (datos de una cita del
  * mismo paciente) se reutilizan sus datos; sin él se escriben. initialDate propone el día de partida.
+ * selfDoctor (solo al crear, doctor con sesión): la cita va a su propia agenda y no se elige doctor;
+ * las horas ocupadas del resto de la clínica se piden al servidor (sin datos de pacientes).
  * Solo deja elegir horarios libres y doctores que pueden atender; pide confirmación antes de guardar.
  */
 const RescheduleModal = ({
@@ -75,6 +83,7 @@ const RescheduleModal = ({
   onClose,
   doctors = [],
   appointments = [],
+  selfDoctor,
   onSaved,
   onConflict,
 }) => {
@@ -84,7 +93,8 @@ const RescheduleModal = ({
   const rebook = mode === "rebook" || create;
   const today = todayKey();
   const currentIds = useMemo(() => (appointment?.assignedDoctors ?? []).map((d) => d.id), [appointment]);
-  const active = useMemo(() => assignableDoctors(doctors), [doctors]);
+  const ownAgenda = create && Boolean(selfDoctor);
+  const active = useMemo(() => assignableDoctors(ownAgenda ? [selfDoctor] : doctors), [ownAgenda, selfDoctor, doctors]);
 
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
@@ -95,6 +105,8 @@ const RescheduleModal = ({
   const [error, setError] = useState("");
   const [patientData, setPatientData] = useState(EMPTY_PATIENT);
   const [showPatientErrors, setShowPatientErrors] = useState(false);
+  // Horas ocupadas de toda la clínica el día elegido (solo agenda propia del doctor)
+  const [clinicTimes, setClinicTimes] = useState({ date: "", times: [] });
 
   // Al abrir: la fecha actual (si no pasó) y los doctores actuales que siguen activos.
   // Al crear: el día de partida (si se puede reservar) y los datos del paciente, si se conocen
@@ -104,29 +116,43 @@ const RescheduleModal = ({
     const bookable = day >= today && (!create || fromDayKey(day).getDay() !== 0);
     setDate((!rebook || create) && day && bookable ? day : "");
     setTime("");
-    setDoctorIds(create ? [] : currentIds.filter((id) => active.some((d) => d.id === id)));
+    setDoctorIds(ownAgenda ? [selfDoctor.id] : create ? [] : currentIds.filter((id) => active.some((d) => d.id === id)));
     setPatientData(patient ? { firstName: patient.firstName, lastName: patient.lastName, ci: patient.ci, email: patient.email } : EMPTY_PATIENT);
     setShowPatientErrors(false);
     setReason("");
     setStep("form");
     setError("");
-  }, [isOpen, appointment, create, initialDate, patient, rebook, today, currentIds, active]);
+  }, [isOpen, appointment, create, initialDate, patient, rebook, today, currentIds, active, ownAgenda, selfDoctor]);
 
   const isSunday = date ? fromDayKey(date).getDay() === 0 : false;
   const validDate = Boolean(date) && date >= today && !isSunday;
+
+  // El doctor solo tiene cargadas sus citas: el resto de horas ocupadas las da el servidor
+  useEffect(() => {
+    if (!isOpen || !ownAgenda || !validDate) return;
+    let alive = true;
+    fetchOccupiedTimes(date)
+      .then((times) => alive && setClinicTimes({ date, times }))
+      .catch(() => alive && setClinicTimes({ date, times: [] }));
+    return () => {
+      alive = false;
+    };
+  }, [isOpen, ownAgenda, validDate, date]);
+  const loadingTimes = ownAgenda && validDate && clinicTimes.date !== date;
 
   // Horarios del día: libres en la clínica y en los que todos los doctores elegidos pueden atender
   const slots = useMemo(() => {
     if (!validDate) return [];
     const occupied = appointments
       .filter((a) => a.id !== appointment?.id && occupiesSlot(a) && toDayKey(a.date) === date)
-      .map((a) => a.time);
+      .map((a) => a.time)
+      .concat(ownAgenda && clinicTimes.date === date ? clinicTimes.times : []);
     const selected = active.filter((d) => doctorIds.includes(d.id));
     return buildSlots(occupied, { isToday: date === today }).map((slot) => ({
       ...slot,
       available: slot.available && selected.every((d) => !doctorConflict(d, { date, time: slot.time, excludeId: appointment?.id }, appointments)),
     }));
-  }, [validDate, appointments, appointment, date, today, active, doctorIds]);
+  }, [validDate, appointments, appointment, date, today, active, doctorIds, ownAgenda, clinicTimes]);
 
   // Si el horario elegido deja de estar libre (otro día u otro doctor), se descarta
   useEffect(() => {
@@ -157,7 +183,7 @@ const RescheduleModal = ({
   const sameDoctors = doctorIds.length === currentIds.length && doctorIds.every((id) => currentIds.includes(id));
   const needsDoctor = !rebook && appointment.status === "confirmada" && !doctorIds.length;
   const selectedConflict = active.filter((d) => doctorIds.includes(d.id)).some((d) => conflictFor(d));
-  const canReview = validDate && time && !needsDoctor && !selectedConflict && !(sameSlot && sameDoctors);
+  const canReview = validDate && time && !needsDoctor && !selectedConflict && !(sameSlot && sameDoctors) && !(ownAgenda && !active.length);
 
   const review = () => {
     if (!patientCheck.success) return setShowPatientErrors(true);
@@ -169,7 +195,9 @@ const RescheduleModal = ({
     setError("");
     try {
       const payload = { date, time, doctorIds, reason: reason.trim() };
-      const saved = create
+      const saved = ownAgenda
+        ? await createDoctorAppointment({ ...patientData, ...payload })
+        : create
         ? await createAdminAppointment({ ...patientData, ...payload })
         : rebook
           ? await rebookAppointment(appointment.id, payload)
@@ -276,11 +304,23 @@ const RescheduleModal = ({
                   <FormLabel fontSize="sm" fontWeight="600">
                     Hora disponible
                   </FormLabel>
-                  <TimeSlotPicker slots={slots} value={time} onChange={setTime} />
+                  <TimeSlotPicker slots={slots} value={time} onChange={setTime} loading={loadingTimes} />
                   <FormHelperText>Se ocultan las horas ocupadas y las que no atienden los doctores elegidos.</FormHelperText>
                 </FormControl>
               )}
 
+              {ownAgenda ? (
+                <Box>
+                  <Text fontSize="sm" fontWeight="600">
+                    Doctor
+                  </Text>
+                  <Text fontSize="sm" color="text.muted">
+                    {active.length
+                      ? `La cita se creará en tu agenda (${doctorName(selfDoctor)}) y quedará confirmada.`
+                      : "Tu cuenta no puede atender citas ahora mismo. Pide ayuda a la administración."}
+                  </Text>
+                </Box>
+              ) : (
               <FormControl>
                 <FormLabel fontSize="sm" fontWeight="600">
                   Doctor{rebook ? " (opcional)" : ""}
@@ -315,6 +355,7 @@ const RescheduleModal = ({
                   <FormHelperText>Sin doctor, la nueva cita quedará pendiente hasta que se le asigne uno.</FormHelperText>
                 )}
               </FormControl>
+              )}
 
               <FormControl>
                 <FormLabel fontSize="sm" fontWeight="600">

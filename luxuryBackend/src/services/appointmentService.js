@@ -63,7 +63,7 @@ const describeHours = (availability, date) => {
 
 /**
  * Comprueba que una cita pueda ocupar ese día y hora con esos doctores.
- * - clinicGap: exige la separación mínima con el resto de citas de la clínica (igual que al reservar).
+ * - clinicGap: exige la separación mínima con el resto de citas de la clínica (igual que al crear una cita).
  * - Cada doctor debe estar activo, atender a esa hora y no tener otra cita que se solape.
  * Devuelve los doctores o lanza un error con el motivo.
  */

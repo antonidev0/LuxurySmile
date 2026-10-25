@@ -110,11 +110,11 @@ const AppointmentsPage = () => {
           appointments={visible}
           onSelect={drawer.open}
           emptyTitle={appointments.length ? "No hay citas con estos filtros" : "Todavía no hay citas"}
-          emptyDescription={appointments.length ? "Prueba a cambiar o limpiar los filtros." : isAdmin ? "Las solicitudes de la web aparecerán aquí." : "Cuando te asignen una cita aparecerá aquí."}
+          emptyDescription={appointments.length ? "Prueba a cambiar o limpiar los filtros." : isAdmin ? "Las citas que registre el personal aparecerán aquí." : "Cuando te asignen una cita o crees una desde el calendario aparecerá aquí."}
         />
         {!isAdmin && (
           <Text fontSize="xs" color="text.muted" mt={4}>
-            Si necesitas que te asignen o reasignen una cita, pídeselo a la administración.
+            Puedes crear citas en tu agenda desde el calendario. Para asignar o reasignar otras citas, pídeselo a la administración.
           </Text>
         )}
       </Panel>

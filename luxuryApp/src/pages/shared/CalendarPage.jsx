@@ -9,6 +9,7 @@ import ErrorState from "../../components/ui/ErrorState";
 import LoadingState from "../../components/ui/LoadingState";
 import PageHeader from "../../components/ui/PageHeader";
 import Panel from "../../components/ui/Panel";
+import { useAuth } from "../../context/AuthContext";
 import { useAppointments } from "../../hooks/useAppointments";
 import { useSelectedAppointment } from "../../hooks/useSelectedAppointment";
 import { useStaff } from "../../hooks/useStaff";
@@ -24,6 +25,7 @@ const keyOfMonth = ({ year, month }) => `${year}-${String(month + 1).padStart(2,
 const CalendarPage = () => {
   const { appointments, loading, error, reload, refresh, replaceAppointment, addAppointment, role } = useAppointments();
   const isAdmin = role === "admin";
+  const { user } = useAuth();
   const { doctors } = useStaff(isAdmin);
   const [selectedDay, setSelectedDay] = useState(todayKey);
   const [month, setMonth] = useState(() => monthOf(todayKey()));
@@ -70,11 +72,10 @@ const CalendarPage = () => {
         title="Calendario"
         description="Toca un día para ver sus citas."
         actions={
-          isAdmin && (
-            <Button leftIcon={<FiPlus />} onClick={() => setCreating({ date: selectedDay })}>
-              Nueva cita
-            </Button>
-          )
+          // Admin y doctores crean citas desde el panel; el doctor, solo en su propia agenda
+          <Button leftIcon={<FiPlus />} onClick={() => setCreating({ date: selectedDay })}>
+            Nueva cita
+          </Button>
         }
       />
       <Grid templateColumns={{ base: "minmax(0, 1fr)", xl: "minmax(0, 2fr) minmax(0, 1fr)" }} gap={6} alignItems="start">
@@ -135,19 +136,18 @@ const CalendarPage = () => {
         appointments={appointments}
         canAssign={isAdmin}
       />
-      {isAdmin && (
-        <RescheduleModal
-          mode="create"
-          patient={creating?.patient}
-          initialDate={creating?.date}
-          isOpen={Boolean(creating)}
-          onClose={() => setCreating(null)}
-          doctors={doctors}
-          appointments={appointments}
-          onSaved={handleCreated}
-          onConflict={refresh}
-        />
-      )}
+      <RescheduleModal
+        mode="create"
+        patient={creating?.patient}
+        initialDate={creating?.date}
+        isOpen={Boolean(creating)}
+        onClose={() => setCreating(null)}
+        doctors={doctors}
+        appointments={appointments}
+        selfDoctor={isAdmin ? undefined : user}
+        onSaved={handleCreated}
+        onConflict={refresh}
+      />
     </>
   );
 };

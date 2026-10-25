@@ -9,7 +9,6 @@ import PrivateRoute from "./PrivateRoute";
 // Cada página se descarga cuando se visita por primera vez
 const TreatmentsPage = lazy(() => import("../pages/public/TreatmentsPage"));
 const AboutPage = lazy(() => import("../pages/public/AboutPage"));
-const BookAppointmentPage = lazy(() => import("../pages/public/BookAppointmentPage"));
 const LoginPage = lazy(() => import("../pages/public/LoginPage"));
 const VerifyPage = lazy(() => import("../pages/public/VerifyPage"));
 const NotFoundPage = lazy(() => import("../pages/public/NotFoundPage"));
@@ -43,13 +42,13 @@ const AppRouter = () => (
         <Route index element={<HomePage />} />
         <Route path="tratamientos" element={<TreatmentsPage />} />
         <Route path="nosotros" element={<AboutPage />} />
-        <Route path="agendar" element={<BookAppointmentPage />} />
-        {/* Rutas antiguas */}
+        {/* Rutas antiguas. La web es informativa: /agendar y /solicitar-cita ya no existen
+            (las citas las crea el personal desde su panel) y caen en la página 404 */}
         <Route path="services" element={<Navigate to="/tratamientos" replace />} />
-        <Route path="solicitar-cita" element={<Navigate to="/agendar" replace />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
 
+      {/* Acceso y activación de cuenta del personal (no hay cuentas de pacientes) */}
       <Route path="login" element={<LoginPage />} />
       <Route path="verify/:id/:token" element={<VerifyPage />} />
 

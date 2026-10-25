@@ -1,11 +1,10 @@
 import { Box, Button, Container, Heading, Stack, Text } from "@chakra-ui/react";
 import { FaWhatsapp } from "react-icons/fa";
-import { FiCalendar } from "react-icons/fi";
-import { Link } from "react-router-dom";
+import { FiPhone } from "react-icons/fi";
 import { CLINIC } from "../../constants/clinic";
 import Reveal from "../ui/Reveal";
 
-const CallToAction = ({ title = "¿Listo para tu nueva sonrisa?", text = "Reserva tu evaluación hoy. Te confirmamos la cita y te asignamos al especialista ideal." }) => (
+const CallToAction = ({ title = "¿Listo para tu nueva sonrisa?", text = "Escríbenos o llámanos y nuestro equipo te explicará cómo coordinar tu evaluación con el especialista ideal." }) => (
   <Box py={{ base: 12, md: 20 }}>
     <Container maxW="6xl" px={{ base: 4, md: 8 }}>
       <Reveal>
@@ -27,11 +26,11 @@ const CallToAction = ({ title = "¿Listo para tu nueva sonrisa?", text = "Reserv
             {text}
           </Text>
           <Stack direction={{ base: "column", sm: "row" }} spacing={3} justify="center" position="relative">
-            <Button as={Link} to="/agendar" size="lg" colorScheme="gold" color="brand.900" leftIcon={<FiCalendar />}>
-              Agendar cita
-            </Button>
-            <Button as="a" href={CLINIC.whatsapp} target="_blank" rel="noreferrer" size="lg" variant="outline" color="white" borderColor="whiteAlpha.500" _hover={{ bg: "whiteAlpha.100" }} leftIcon={<FaWhatsapp />}>
+            <Button as="a" href={CLINIC.whatsapp} target="_blank" rel="noreferrer" size="lg" colorScheme="gold" color="brand.900" leftIcon={<FaWhatsapp />}>
               Escríbenos
+            </Button>
+            <Button as="a" href={`tel:${CLINIC.phone.replace(/[^+\d]/g, "")}`} size="lg" variant="outline" color="white" borderColor="whiteAlpha.500" _hover={{ bg: "whiteAlpha.100" }} leftIcon={<FiPhone />}>
+              {CLINIC.phone}
             </Button>
           </Stack>
         </Box>

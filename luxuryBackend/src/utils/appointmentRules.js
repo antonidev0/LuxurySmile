@@ -37,7 +37,7 @@ export const NEEDS_DAY_REACHED = ["completada", "no_asistio"];
 // Lo único que un doctor puede hacer con sus citas; el resto lo gestiona la administración
 export const DOCTOR_STATUSES = ["completada", "no_asistio"];
 
-// Separación mínima entre citas (la misma que al pedir cita desde la web)
+// Separación mínima entre citas de la clínica
 export const SLOT_MINUTES = 40;
 
 export const DATE_FORMAT = /^\d{4}-\d{2}-\d{2}$/;

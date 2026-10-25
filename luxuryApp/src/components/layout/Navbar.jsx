@@ -1,6 +1,5 @@
 import {
   Box,
-  Button,
   Container,
   Drawer,
   DrawerBody,
@@ -15,7 +14,7 @@ import {
 } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 import { FiMenu } from "react-icons/fi";
-import { Link, NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { PUBLIC_LINKS } from "../../constants/clinic";
 import { dashboardHome } from "../../constants/navigation";
 import { useAuth } from "../../context/AuthContext";
@@ -83,18 +82,13 @@ const Navbar = () => {
             </Box>
           </HStack>
 
-          <HStack spacing={2}>
-            <Button as={Link} to="/agendar" size={{ base: "sm", md: "md" }} colorScheme="brand" display={{ base: "none", sm: "inline-flex" }}>
-              Agendar cita
-            </Button>
-            <IconButton
-              aria-label="Abrir menú"
-              icon={<FiMenu />}
-              variant="ghost"
-              display={{ base: "inline-flex", md: "none" }}
-              onClick={onOpen}
-            />
-          </HStack>
+          <IconButton
+            aria-label="Abrir menú"
+            icon={<FiMenu />}
+            variant="ghost"
+            display={{ base: "inline-flex", md: "none" }}
+            onClick={onOpen}
+          />
         </Flex>
       </Container>
 
@@ -109,9 +103,6 @@ const Navbar = () => {
                   {link.label}
                 </Box>
               ))}
-              <Button as={Link} to="/agendar" mt={4} size="lg">
-                Agendar cita
-              </Button>
             </VStack>
           </DrawerBody>
         </DrawerContent>

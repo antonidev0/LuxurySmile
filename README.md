@@ -1,6 +1,6 @@
 # Luxury Smile
 
-Web de la clínica odontológica: página pública con solicitud de citas y panel de administración para gestionar citas, doctores e historiales médicos.
+Web de la clínica odontológica: página pública informativa (sin reserva online ni cuentas de pacientes) y panel privado para que el administrador y los doctores gestionen y creen citas, doctores e historiales médicos.
 
 - `luxuryApp/`: frontend (React + Vite + Chakra UI)
 - `luxuryBackend/`: backend (Node + Express + PostgreSQL con Prisma)
@@ -59,8 +59,8 @@ pnpm dev                  # abre http://localhost:5173
 
 1. Entra en `/login` con el administrador que creaste.
 2. Ve a **Registrar personal** y da de alta un doctor. Le llegará un correo para verificar su cuenta.
-3. Desde la web pública (**Solicitar cita**), pide una cita.
-4. En **Asignar** (gestión de citas), asígnale el doctor, cambia el estado y genera o sube el historial PDF.
+3. En **Calendario**, pulsa **Nueva cita** y regístrala con los datos del paciente (la web pública es solo informativa: no tiene reserva online).
+4. En **Citas**, asígnale el doctor, cambia el estado y genera o sube el historial PDF. Los doctores también pueden crear citas en su propia agenda desde su calendario.
 
 ## Comandos útiles del backend
 

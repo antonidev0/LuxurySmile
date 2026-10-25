@@ -1,7 +1,9 @@
 import { Box, Button, Container, Flex, Heading, HStack, Icon, SimpleGrid, Stack, Text } from "@chakra-ui/react";
 import { motion } from "framer-motion";
+import { FaWhatsapp } from "react-icons/fa";
 import { FiArrowRight, FiCheckCircle } from "react-icons/fi";
 import { Link } from "react-router-dom";
+import { CLINIC } from "../../constants/clinic";
 import HeroVisual from "./HeroVisual";
 
 const MotionBox = motion(Box);
@@ -74,11 +76,11 @@ const Hero = ({ ready }) => (
 
           <MotionBox {...fadeUp(ready ? 0.5 : 0)} w={{ base: "full", sm: "auto" }}>
             <Stack direction={{ base: "column", sm: "row" }} spacing={3}>
-              <Button as={Link} to="/agendar" size="lg" rightIcon={<FiArrowRight />} px={8}>
-                Agendar mi cita
-              </Button>
-              <Button as={Link} to="/tratamientos" size="lg" variant="outline" colorScheme="brand" bg="whiteAlpha.700">
+              <Button as={Link} to="/tratamientos" size="lg" rightIcon={<FiArrowRight />} px={8}>
                 Ver tratamientos
+              </Button>
+              <Button as="a" href={CLINIC.whatsapp} target="_blank" rel="noreferrer" size="lg" variant="outline" colorScheme="brand" bg="whiteAlpha.700" leftIcon={<FaWhatsapp />}>
+                Escríbenos
               </Button>
             </Stack>
           </MotionBox>
