@@ -34,6 +34,8 @@ import { fetchRecordForm, saveRecord } from "../../services/records.service";
 import { formatDay } from "../../utils/dates";
 import { ageFrom, BIOTIPOS, FOTOTIPOS, QUESTION_COLUMNS, toFicha } from "../../utils/ficha";
 
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 const Section = ({ title, children }) => (
   <Box>
     <Text fontSize="xs" color="text.muted" textTransform="uppercase" letterSpacing="0.06em" fontWeight="600" mb={3}>
@@ -141,8 +143,18 @@ const MedicalRecordForm = ({ appointment, isOpen, onClose, onSaved }) => {
       return { ...f, respuestas };
     });
 
+  // El aviso de error queda al final del formulario, que es largo: también se muestra arriba como notificación
+  const fail = (message) => {
+    setError(message);
+    notify.error("No se pudo guardar la ficha", { message });
+  };
+
   const save = async () => {
-    if (!ficha.nombre.trim()) return setError("Escribe el nombre del paciente.");
+    if (!ficha.nombre.trim()) return fail("Escribe el nombre del paciente.");
+    // Un año mal escrito en el campo de fecha (p. ej. de cinco cifras) llega al servidor como fecha inválida
+    if ([ficha.fecha, ficha.fechaNacimiento].some((value) => value && !DATE_RE.test(value))) {
+      return fail("Revisa la fecha y la fecha de nacimiento: el año debe tener cuatro cifras.");
+    }
     setSaving(true);
     setError("");
     try {
@@ -154,7 +166,7 @@ const MedicalRecordForm = ({ appointment, isOpen, onClose, onSaved }) => {
       onSaved?.({ id: appointment.id, historialPDF, medicalRecordId });
       onClose();
     } catch (err) {
-      setError(getErrorMessage(err));
+      fail(getErrorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -224,7 +236,7 @@ const MedicalRecordForm = ({ appointment, isOpen, onClose, onSaved }) => {
               <Section title="Datos del paciente">
                 <Grid templateColumns={{ base: "1fr", md: "repeat(4, 1fr)" }} gap={4}>
                   <Field label="Fecha">
-                    <Input type="date" value={ficha.fecha} onChange={set("fecha")} />
+                    <Input type="date" max="9999-12-31" value={ficha.fecha} onChange={set("fecha")} />
                   </Field>
                   <Field label="Nombre y apellido" span={3}>
                     <Input value={ficha.nombre} onChange={set("nombre")} />
@@ -233,7 +245,7 @@ const MedicalRecordForm = ({ appointment, isOpen, onClose, onSaved }) => {
                     <Input value={ficha.ci} onChange={set("ci")} />
                   </Field>
                   <Field label="Fecha de nacimiento">
-                    <Input type="date" value={ficha.fechaNacimiento} onChange={setBirth} />
+                    <Input type="date" max="9999-12-31" value={ficha.fechaNacimiento} onChange={setBirth} />
                   </Field>
                   <Field label="Edad">
                     <Input value={ficha.edad} onChange={set("edad")} inputMode="numeric" maxLength={3} />
