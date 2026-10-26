@@ -75,8 +75,22 @@ const TEXT_FIELDS = {
   diagnostico: 600,
 };
 
-const DATE_FIELDS = ["fecha", "fechaNacimiento"];
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const DATE_FIELDS = { fecha: "La fecha de la ficha", fechaNacimiento: "La fecha de nacimiento" };
+
+// Fecha de la ficha como "YYYY-MM-DD". Además del formato del campo de fecha del navegador,
+// acepta una fecha completa (ISO) y día/mes/año, por si el navegador muestra el campo como texto.
+const parseFichaDate = (value, label) => {
+  const text = String(value ?? "").trim();
+  if (!text) return "";
+  const iso = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:T.*)?$/);
+  const dmy = text.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/);
+  const [y, m, d] = iso ? [iso[1], iso[2], iso[3]] : dmy ? [dmy[3], dmy[2], dmy[1]] : [];
+  const date = y ? new Date(Date.UTC(Number(y), Number(m) - 1, Number(d))) : null;
+  if (!date || date.getUTCMonth() !== Number(m) - 1 || date.getUTCDate() !== Number(d)) {
+    throw new AppError(`${label} no es válida (${text.slice(0, 20)}). Usa día, mes y año de cuatro cifras.`, 400);
+  }
+  return date.toISOString().slice(0, 10);
+};
 
 const clean = (value, max) => String(value ?? "").replace(/\s+/g, " ").trim().slice(0, max);
 
@@ -101,10 +115,8 @@ export const sanitizeFicha = (input) => {
     // El diagnóstico admite saltos de línea; el resto es una sola línea
     ficha[key] = key === "diagnostico" ? String(input[key] ?? "").trim().slice(0, max) : clean(input[key], max);
   }
-  for (const key of DATE_FIELDS) {
-    const value = clean(input[key], 10);
-    if (value && !DATE_RE.test(value)) throw new AppError("Fecha de la ficha inválida", 400);
-    ficha[key] = value;
+  for (const [key, label] of Object.entries(DATE_FIELDS)) {
+    ficha[key] = parseFichaDate(input[key], label);
   }
 
   ficha.sexo = ["M", "F"].includes(input.sexo) ? input.sexo : "";

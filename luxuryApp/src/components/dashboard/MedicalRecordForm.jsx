@@ -141,8 +141,14 @@ const MedicalRecordForm = ({ appointment, isOpen, onClose, onSaved }) => {
       return { ...f, respuestas };
     });
 
+  // El aviso de error queda al final del formulario, que es largo: también se muestra arriba como notificación
+  const fail = (message) => {
+    setError(message);
+    notify.error("No se pudo guardar la ficha", { message });
+  };
+
   const save = async () => {
-    if (!ficha.nombre.trim()) return setError("Escribe el nombre del paciente.");
+    if (!ficha.nombre.trim()) return fail("Escribe el nombre del paciente.");
     setSaving(true);
     setError("");
     try {
@@ -154,7 +160,7 @@ const MedicalRecordForm = ({ appointment, isOpen, onClose, onSaved }) => {
       onSaved?.({ id: appointment.id, historialPDF, medicalRecordId });
       onClose();
     } catch (err) {
-      setError(getErrorMessage(err));
+      fail(getErrorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -224,7 +230,7 @@ const MedicalRecordForm = ({ appointment, isOpen, onClose, onSaved }) => {
               <Section title="Datos del paciente">
                 <Grid templateColumns={{ base: "1fr", md: "repeat(4, 1fr)" }} gap={4}>
                   <Field label="Fecha">
-                    <Input type="date" value={ficha.fecha} onChange={set("fecha")} />
+                    <Input type="date" max="9999-12-31" value={ficha.fecha} onChange={set("fecha")} />
                   </Field>
                   <Field label="Nombre y apellido" span={3}>
                     <Input value={ficha.nombre} onChange={set("nombre")} />
@@ -233,7 +239,7 @@ const MedicalRecordForm = ({ appointment, isOpen, onClose, onSaved }) => {
                     <Input value={ficha.ci} onChange={set("ci")} />
                   </Field>
                   <Field label="Fecha de nacimiento">
-                    <Input type="date" value={ficha.fechaNacimiento} onChange={setBirth} />
+                    <Input type="date" max="9999-12-31" value={ficha.fechaNacimiento} onChange={setBirth} />
                   </Field>
                   <Field label="Edad">
                     <Input value={ficha.edad} onChange={set("edad")} inputMode="numeric" maxLength={3} />
