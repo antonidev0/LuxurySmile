@@ -590,12 +590,14 @@ export const uploadAppointmentPDF = async (request, response) => {
 
     const updated = await prisma.appointment.update({
       where: { id },
-      data: { historialPDF: filePath },
+      // El PDF subido sustituye a la ficha generada: la cita deja de usarla
+      data: { historialPDF: filePath, medicalRecordId: null },
     });
 
     return response.status(200).json({
       message: "PDF subido exitosamente",
       historialPDF: updated.historialPDF,
+      medicalRecordId: null,
     });
   } catch (error) {
     console.error("Error al subir el PDF:", error);

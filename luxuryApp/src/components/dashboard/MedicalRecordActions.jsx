@@ -14,18 +14,20 @@ import {
   useDisclosure,
 } from "@chakra-ui/react";
 import { useEffect, useRef, useState } from "react";
-import { FiDownload, FiEye, FiFilePlus, FiUpload } from "react-icons/fi";
+import { FiDownload, FiEdit3, FiEye, FiFilePlus, FiUpload } from "react-icons/fi";
 import { useNotify } from "../../hooks/useNotify";
-import { fetchRecordPDFUrl, generateRecordPDF, uploadRecordPDF } from "../../services/records.service";
+import { fetchRecordPDFUrl, uploadRecordPDF } from "../../services/records.service";
+import MedicalRecordForm from "./MedicalRecordForm";
 
 /**
  * Acciones sobre la historia clínica (PDF) de una cita:
- * ver, descargar, generar con los datos de la cita o subir un archivo.
- * onUpdated recibe { id, historialPDF } para refrescar la cita en la lista.
+ * ver, descargar, llenar o editar la ficha oficial de la clínica (genera el PDF) o subir un archivo.
+ * onUpdated recibe { id, historialPDF, medicalRecordId } para refrescar la cita en la lista.
  */
 const MedicalRecordActions = ({ appointment, onUpdated, size = "sm" }) => {
   const notify = useNotify();
   const viewer = useDisclosure();
+  const form = useDisclosure();
   const fileInput = useRef(null);
   const [pdfUrl, setPdfUrl] = useState("");
   const [busy, setBusy] = useState(null);
@@ -81,26 +83,15 @@ const MedicalRecordActions = ({ appointment, onUpdated, size = "sm" }) => {
       }
     });
 
-  const handleGenerate = () =>
-    run("generate", async () => {
-      try {
-        const { pdfUrl: historialPDF } = await generateRecordPDF(appointment.id);
-        notify.success("Historia generada");
-        onUpdated?.({ id: appointment.id, historialPDF });
-      } catch (err) {
-        notify.error("No se pudo generar el PDF", err);
-      }
-    });
-
   const handleUpload = (event) => {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
     run("upload", async () => {
       try {
-        const { historialPDF } = await uploadRecordPDF(appointment.id, file);
+        const { historialPDF, medicalRecordId } = await uploadRecordPDF(appointment.id, file);
         notify.success("PDF subido correctamente");
-        onUpdated?.({ id: appointment.id, historialPDF });
+        onUpdated?.({ id: appointment.id, historialPDF, medicalRecordId });
       } catch (err) {
         notify.error("No se pudo subir el PDF", err);
       }
@@ -119,14 +110,17 @@ const MedicalRecordActions = ({ appointment, onUpdated, size = "sm" }) => {
             <Button leftIcon={<FiDownload />} onClick={handleDownload} isLoading={busy === "download"}>
               Descargar
             </Button>
+            <Button leftIcon={<FiEdit3 />} onClick={form.onOpen}>
+              Editar ficha
+            </Button>
             <Button leftIcon={<FiUpload />} variant="ghost" onClick={() => fileInput.current?.click()} isLoading={busy === "upload"}>
               Reemplazar
             </Button>
           </>
         ) : (
           <>
-            <Button leftIcon={<FiFilePlus />} variant="solid" onClick={handleGenerate} isLoading={busy === "generate"}>
-              Generar PDF
+            <Button leftIcon={<FiFilePlus />} variant="solid" onClick={form.onOpen}>
+              Llenar ficha
             </Button>
             <Button leftIcon={<FiUpload />} onClick={() => fileInput.current?.click()} isLoading={busy === "upload"}>
               Subir PDF
@@ -134,6 +128,8 @@ const MedicalRecordActions = ({ appointment, onUpdated, size = "sm" }) => {
           </>
         )}
       </ButtonGroup>
+
+      {form.isOpen && <MedicalRecordForm appointment={appointment} isOpen onClose={form.onClose} onSaved={onUpdated} />}
 
       <Modal isOpen={viewer.isOpen} onClose={viewer.onClose} size={{ base: "full", md: "5xl" }}>
         <ModalOverlay />

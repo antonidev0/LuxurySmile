@@ -74,6 +74,9 @@ model Appointment {
   time         String
   status       AppointmentStatus @default(pendiente)
   historialPDF String?
+  // Ficha clínica que usa la cita (puede ser una ficha creada en una cita anterior del paciente)
+  medicalRecordId String?
+  medicalRecord   MedicalRecord? @relation("AppointmentRecord", fields: [medicalRecordId], references: [id], onDelete: SetNull)
   // Copia de los datos de los doctores al completar la cita,
   // para conservarlos aunque luego se elimine al doctor
   completedBy  Json?
@@ -85,6 +88,8 @@ model Appointment {
 
   assignedDoctors Staff[] @relation("AssignedDoctors")
   events          AppointmentEvent[]
+  // Fichas clínicas creadas en esta cita
+  createdRecords  MedicalRecord[] @relation("RecordOrigin")
 
   @@index([date])
 }
@@ -114,4 +119,29 @@ model AppointmentEvent {
   createdAt     DateTime             @default(now())
 
   @@index([appointmentId, createdAt])
+}
+
+// Ficha clínica del paciente con el formato oficial de la clínica (assets/ficha-luxury-smile.pdf).
+// Un paciente (por cédula) puede tener varias fichas: en cada consulta el doctor edita la última
+// o crea una nueva. El PDF se vuelve a generar cada vez que se guarda la ficha.
+model MedicalRecord {
+  id            String        @id @default(cuid())
+  // Cédula en mayúsculas y sin espacios, para agrupar las fichas del paciente
+  patientCi     String
+  // Cita en la que se creó la ficha
+  appointmentId String
+  appointment   Appointment   @relation("RecordOrigin", fields: [appointmentId], references: [id], onDelete: Restrict)
+  // Datos de la ficha (ver sanitizeFicha en src/utils/ficha.js)
+  data          Json
+  pdfPath       String
+  createdById   String?
+  createdByName String
+  updatedById   String?
+  updatedByName String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  appointments  Appointment[] @relation("AppointmentRecord")
+
+  @@index([patientCi, createdAt])
 }
