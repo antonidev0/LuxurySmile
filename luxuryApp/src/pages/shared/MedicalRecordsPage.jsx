@@ -30,7 +30,7 @@ const FILTERS = [
   ["all", "Todas"],
 ];
 
-// Historias clínicas: lista todas las citas y permite generar, subir o ver su PDF
+// Historias clínicas: lista todas las citas y permite llenar la ficha, subir o ver su PDF
 const MedicalRecordsPage = () => {
   const { appointments, loading, error, reload, replaceAppointment } = useAppointments();
   const [search, setSearch] = useState("");
@@ -55,7 +55,7 @@ const MedicalRecordsPage = () => {
 
   return (
     <>
-      <PageHeader title="Historias clínicas" description="Genera la historia con los datos de la cita o sube el PDF del paciente." />
+      <PageHeader title="Historias clínicas" description="Llena la ficha clínica de la clínica en cada consulta (se genera su PDF) o sube el PDF del paciente." />
 
       <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4} mb={6}>
         <StatCard label="Con historia" value={withRecord} icon={FiCheckCircle} color="green" />

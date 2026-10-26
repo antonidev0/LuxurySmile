@@ -1,8 +1,15 @@
 import api from "./api";
 
 // Historiales médicos en PDF (protegidos: se descargan con el token)
-export const generateRecordPDF = (appointmentId) =>
-  api.post(`/api/pdf/generate-pdf/${appointmentId}`).then((res) => res.data);
+
+// Ficha clínica de una cita: { current, latest, defaults } para rellenar el formulario
+export const fetchRecordForm = (appointmentId) =>
+  api.get(`/api/pdf/appointments/${appointmentId}/ficha`).then((res) => res.data);
+
+// Guarda la ficha y genera su PDF con el formato de la clínica.
+// Con recordId se edita esa ficha; sin él se crea una ficha nueva aparte.
+export const saveRecord = (appointmentId, { recordId, data }) =>
+  api.post(`/api/pdf/appointments/${appointmentId}/ficha`, { recordId, data }).then((res) => res.data);
 
 export const uploadRecordPDF = (appointmentId, file) => {
   const formData = new FormData();
