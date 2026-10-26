@@ -1,18 +1,18 @@
 import { Router } from "express";
-import { getMyAppointments, getOccupiedTimes } from "../controllers/doctorController.js";
-import { createDoctorAppointment } from "../controllers/adminAppointmentsController.js";
+import { createDoctorAppointment, getMyAppointments, getOccupiedTimes } from "../controllers/doctorController.js";
 import { authenticateJWT } from "../middlewares/authenticateJWT.js";
-import { doctorOnly } from "../middlewares/staffOnly.js";
+import { doctorOnly } from "../middlewares/roles.js";
+import { validate } from "../middlewares/validate.js";
+import { createAppointmentBody, occupiedQuery } from "../validators/appointmentSchemas.js";
 
 const router = Router();
 
-// Citas asignadas al doctor con sesion iniciada
-router.get("/appointments", authenticateJWT, doctorOnly, getMyAppointments);
+router.use(authenticateJWT, doctorOnly);
 
-// Nueva cita en la agenda del doctor con sesion iniciada (siempre asignada a el)
-router.post("/appointments", authenticateJWT, doctorOnly, createDoctorAppointment);
-
-// Horas ocupadas de la clinica en un dia, sin datos de pacientes, para proponer horarios libres
-router.get("/occupied", authenticateJWT, doctorOnly, getOccupiedTimes);
+router.get("/appointments", getMyAppointments);
+// La cita queda siempre asignada al doctor de la sesión
+router.post("/appointments", validate({ body: createAppointmentBody }), createDoctorAppointment);
+// Horas ocupadas de toda la clínica, sin datos de pacientes, para proponer horarios libres
+router.get("/occupied", validate({ query: occupiedQuery }), getOccupiedTimes);
 
 export default router;

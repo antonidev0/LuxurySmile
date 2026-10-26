@@ -1,71 +1,74 @@
 import { Router } from "express";
-import { getAllStaff,
-         assignDoctorToAppointment,
-         unassignDoctorFromAppointment,
-         getAllAppointments,
-         updateAppointment,
-         verifyStaffById,
-         uploadAppointmentPDF,
-         getAppointmentPDF,
-         rescheduleAppointment,
-         rebookAppointment,
-         createAdminAppointment,
-         getAppointmentHistory,
-         addAppointmentNote } from "../controllers/adminAppointmentsController.js";
-import { updateStaff,
-         updateAvailability,
-         deactivateStaff,
-         reactivateStaff,
-         changeStaffRole } from "../controllers/staffController.js";
+import {
+  addAppointmentNote,
+  assignDoctorToAppointment,
+  createAdminAppointment,
+  getAllAppointments,
+  getAppointmentHistory,
+  rebookAppointment,
+  rescheduleAppointment,
+  unassignDoctorFromAppointment,
+  updateAppointment,
+} from "../controllers/appointmentController.js";
+import { getAppointmentPDF, uploadAppointmentPDF } from "../controllers/pdfController.js";
+import {
+  changeStaffRole,
+  deactivateStaff,
+  getAllStaff,
+  reactivateStaff,
+  updateAvailability,
+  updateStaff,
+  verifyStaffById,
+} from "../controllers/staffController.js";
 import { authenticateJWT } from "../middlewares/authenticateJWT.js";
-import { adminOnly, staffOnly } from "../middlewares/staffOnly.js"; 
+import { adminOnly, staffOnly } from "../middlewares/roles.js";
 import { uploadPDF } from "../middlewares/upload.js";
+import { validate } from "../middlewares/validate.js";
+import {
+  assignDoctorBody,
+  createAppointmentBody,
+  noteBody,
+  rebookBody,
+  rescheduleBody,
+  unassignDoctorParams,
+  updateStatusBody,
+} from "../validators/appointmentSchemas.js";
+import { idParams } from "../validators/common.js";
+import { availabilityBody, changeRoleBody, updateStaffBody } from "../validators/staffSchemas.js";
 
 const router = Router();
 
-// Ruta para obtener todas las citas del admin
-router.get('/Allappointments', authenticateJWT, adminOnly, getAllAppointments);
+router.use(authenticateJWT);
 
-// Ruta para obtener todos los doctores
-router.get('/getDoctors', authenticateJWT, adminOnly ,getAllStaff);
+const withId = (body) => validate(body ? { params: idParams, body } : { params: idParams });
 
-// Ruta para asignar un doctor a una cita
-router.put('/:id/assign-doctor', authenticateJWT, adminOnly, assignDoctorToAppointment );
-
-// Ruta para quitar un doctor de una cita
-router.delete('/:id/assign-doctor/:doctorId', authenticateJWT, adminOnly, unassignDoctorFromAppointment);
-
-// ruta para actualizar el estado de una cita (el doctor solo puede cerrar las suyas)
-router.patch('/:id/updateStatus', authenticateJWT, staffOnly, updateAppointment);
-
-// Reprogramar fecha, hora o doctores de una cita pendiente o confirmada
-router.patch('/:id/reschedule', authenticateJWT, adminOnly, rescheduleAppointment);
-
+router.get("/Allappointments", adminOnly, getAllAppointments);
+router.post("/appointments", adminOnly, validate({ body: createAppointmentBody }), createAdminAppointment);
+router.put("/:id/assign-doctor", adminOnly, withId(assignDoctorBody), assignDoctorToAppointment);
+router.delete(
+  "/:id/assign-doctor/:doctorId",
+  adminOnly,
+  validate({ params: unassignDoctorParams }),
+  unassignDoctorFromAppointment,
+);
+// El doctor solo puede cerrar sus propias citas: lo comprueba el service
+router.patch("/:id/updateStatus", staffOnly, withId(updateStatusBody), updateAppointment);
+router.patch("/:id/reschedule", adminOnly, withId(rescheduleBody), rescheduleAppointment);
 // Nueva cita a partir de una cancelada o de una a la que el paciente no asistió
-router.post('/:id/rebook', authenticateJWT, adminOnly, rebookAppointment);
+router.post("/:id/rebook", adminOnly, withId(rebookBody), rebookAppointment);
+router.get("/:id/history", adminOnly, withId(), getAppointmentHistory);
+router.post("/:id/notes", adminOnly, withId(noteBody), addAppointmentNote);
 
-// Nueva cita registrada por la administración (desde el calendario)
-router.post('/appointments', authenticateJWT, adminOnly, createAdminAppointment);
+// La sesión se valida antes de aceptar el archivo, para no guardar subidas anónimas
+router.patch("/:id/upload-pdf", staffOnly, withId(), uploadPDF, uploadAppointmentPDF);
+router.get("/:id/pdf", staffOnly, withId(), getAppointmentPDF);
 
-// Historial de cambios y notas administrativas de la cita
-router.get('/:id/history', authenticateJWT, adminOnly, getAppointmentHistory);
-router.post('/:id/notes', authenticateJWT, adminOnly, addAppointmentNote);
+router.get("/getDoctors", adminOnly, getAllStaff);
+router.patch("/staff/:id/verify", adminOnly, withId(), verifyStaffById);
+router.patch("/staff/:id", adminOnly, withId(updateStaffBody), updateStaff);
+router.put("/staff/:id/availability", adminOnly, withId(availabilityBody), updateAvailability);
+router.patch("/staff/:id/deactivate", adminOnly, withId(), deactivateStaff);
+router.patch("/staff/:id/reactivate", adminOnly, withId(), reactivateStaff);
+router.patch("/staff/:id/role", adminOnly, withId(changeRoleBody), changeStaffRole);
 
-// Activar a mano la cuenta de un miembro del personal
-router.patch('/staff/:id/verify', authenticateJWT, adminOnly, verifyStaffById);
-
-// Gestion del personal (solo admin). El personal no se borra: se da de baja
-// para conservar su historial, sus citas y las historias clinicas que hizo
-router.patch('/staff/:id', authenticateJWT, adminOnly, updateStaff);
-router.put('/staff/:id/availability', authenticateJWT, adminOnly, updateAvailability);
-router.patch('/staff/:id/deactivate', authenticateJWT, adminOnly, deactivateStaff);
-router.patch('/staff/:id/reactivate', authenticateJWT, adminOnly, reactivateStaff);
-router.patch('/staff/:id/role', authenticateJWT, adminOnly, changeStaffRole);
-
-// Primero se valida la sesion y luego se acepta el archivo, para no guardar subidas anonimas
-router.patch('/:id/upload-pdf', authenticateJWT, staffOnly, uploadPDF.single("pdf"), uploadAppointmentPDF);
-
-// Descargar el historial PDF de una cita (los PDF ya no son publicos)
-router.get('/:id/pdf', authenticateJWT, staffOnly, getAppointmentPDF);
-
-export default router; 
+export default router;

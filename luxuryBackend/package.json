@@ -1,12 +1,17 @@
 {
   "name": "luxurybackend",
   "version": "1.0.0",
-  "main": "server.js",
+  "main": "src/server.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
@@ -19,29 +24,29 @@
   "license": "ISC",
   "dependencies": {
     "@prisma/client": "^6.19.3",
-    "axios": "^1.7.9",
     "bcrypt": "^5.1.1",
-    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "express-rate-limit": "^8.7.1",
+    "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
     "nodemailer": "^6.10.1",
-    "pdf-lib": "^1.17.1"
+    "pdf-lib": "^1.17.1",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.13.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.13.0",
     "nodemon": "^3.1.9",
-    "prisma": "^6.19.3"
+    "prettier": "^3.9.10",
+    "prisma": "^6.19.3",
+    "supertest": "^7.3.1",
+    "vitest": "^5.0.5"
   },
   "description": "",
-  "packageManager": "pnpm@10.28.0",
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "bcrypt",
-      "prisma",
-      "@prisma/client",
-      "@prisma/engines"
-    ]
-  }
+  "packageManager": "pnpm@10.28.0"
 }

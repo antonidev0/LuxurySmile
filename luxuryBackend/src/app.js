@@ -1,39 +1,31 @@
-import { errorHandler } from "./middlewares/errorhandler.js"; // importa el middleware
-import express from "express";
 import cors from "cors";
-import dontev from "dotenv";
-import userRoutes from "../src/routes/user.routes.js";
-import authRoutes from "../src/routes/auth.js";
-import adminRoutes from "../src/routes/admin.routes.js";
-import pdfRoutes from "../src/routes/pdf.routes.js";
-import doctorRoutes from "../src/routes/doctor.routes.js";
-import cookieParser from "cookie-parser";
-
-dontev.config(); //carga variables de entorno 
+import express from "express";
+import helmet from "helmet";
+import { CLIENT_ORIGINS, TRUST_PROXY } from "./config.js";
+import { errorHandler, notFoundHandler } from "./middlewares/errorHandler.js";
+import adminRoutes from "./routes/admin.routes.js";
+import authRoutes from "./routes/auth.js";
+import doctorRoutes from "./routes/doctor.routes.js";
+import pdfRoutes from "./routes/pdf.routes.js";
+import userRoutes from "./routes/user.routes.js";
 
 const app = express();
 
-// middleware y rutas front
+if (TRUST_PROXY !== undefined) app.set("trust proxy", TRUST_PROXY);
+
+app.use(helmet());
+app.use(cors({ origin: CLIENT_ORIGINS }));
 app.use(express.json());
-app.use(cookieParser());
 
-app.use(cors({ 
-    origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173', //acepta solo las peticiones de nuestro front
-    credentials: true, // permitira el uso de cookies para las autenticaciones
-}));
-
-
-// Los historiales PDF ya no se sirven como archivos estaticos publicos:
-// se descargan con sesion iniciada en GET /api/admin/:id/pdf
-
-// Rutas Bakcend
+// Los historiales PDF no se sirven como estáticos: se descargan con sesión en GET /api/admin/:id/pdf.
+// Las citas solo las crea el personal autenticado: no hay ruta pública de reserva.
 app.use("/api/pdf", pdfRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/auth', authRoutes);
-// La antigua ruta publica /api/appointment (reserva desde la web) se retiro:
-// las citas solo las crea el personal autenticado (POST /api/admin/appointments y POST /api/doctor/appointments)
-app.use('/api/admin', adminRoutes);
-app.use('/api/doctor', doctorRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/doctor", doctorRoutes);
 
+app.use(notFoundHandler);
 app.use(errorHandler);
-export default app; 
+
+export default app;

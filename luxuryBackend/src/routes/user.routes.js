@@ -1,23 +1,17 @@
-import { Router } from "express"; // Importamos el Router de Express para crear nuestras rutas.
-import { register, resendVerificationEmail, login, verify } from "../controllers/userController.js"; // Importamos los controladores que manejan la lógica de cada ruta.
-import { authenticateJWT } from "../middlewares/authenticateJWT.js";// Importamos el middleware que protege rutas usando JWT.
-import { adminOnly } from "../middlewares/staffOnly.js";
+import { Router } from "express";
+import { login, register, resendVerificationEmail, verify } from "../controllers/userController.js";
+import { authenticateJWT } from "../middlewares/authenticateJWT.js";
+import { emailLimiter, loginLimiter, registerLimiter, verifyLimiter } from "../middlewares/rateLimit.js";
+import { adminOnly } from "../middlewares/roles.js";
+import { validate } from "../middlewares/validate.js";
+import { loginBody, registerBody, resendVerificationBody, verifyParams } from "../validators/authSchemas.js";
 
-// Creamos una instancia de router para definir nuestras rutas.
 const router = Router();
 
-// Ruta para registrar a un nuevo usuario (POST /api/users/register)
-// Solo un administrador con sesion iniciada puede dar de alta personal (doctores).
-router.post('/register', authenticateJWT, adminOnly, register);
+// Solo un administrador con sesión iniciada puede dar de alta personal
+router.post("/register", registerLimiter, authenticateJWT, adminOnly, validate({ body: registerBody }), register);
+router.post("/login", loginLimiter, validate({ body: loginBody }), login);
+router.get("/verify/:id/:token", verifyLimiter, validate({ params: verifyParams }), verify);
+router.post("/resend-verification", emailLimiter, validate({ body: resendVerificationBody }), resendVerificationEmail);
 
-// Ruta para logear a un usuario.
-router.post('/login', login);
-
-// Ruta para verificar el email del usuario
-router.get('/verify/:id/:token', verify);
-
-// Ruta para verificar el email del usuario si su token vencio
-router.post('/resend-verification', resendVerificationEmail);
-
-// Exportamos el router para usarlo en app.js u otros archivos
 export default router;

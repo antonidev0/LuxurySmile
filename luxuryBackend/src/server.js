@@ -1,33 +1,21 @@
-import app from './app.js'; // Importamos la configuracion principal de la aplicacion Express (rutas, middlewares, etc.).
-import { connectDB } from './config/db.js'; // Importamos la función que conecta con PostgreSQL.
-import dotenv from 'dotenv'; // Importamos dotenv para poder leer las variables de entorno desde el archivo .env .
-dotenv.config(); // Ejecutamos dotenv para que las variables de entorno estén disponibles.
-import { JWT_SECRET, DATABASE_URL, EMAIL_USER, EMAIL_PASS } from './config.js';
+import app from "./app.js";
+import { DATABASE_URL, EMAIL_PASS, EMAIL_USER, JWT_SECRET, PORT } from "./config.js";
+import { connectDB } from "./lib/prisma.js";
 
-// Definimos el puerto donde se ejecutara el servidor, tomando primero el valor del .env si existe
-const PORT = process.env.PORT || 3003;
+const startServer = async () => {
+  if (!JWT_SECRET || !DATABASE_URL) {
+    console.error("Faltan variables de entorno: revisa JWT_SECRET y DATABASE_URL en tu .env (ver .env.example).");
+    process.exit(1);
+  }
+  // El registro funciona igual, pero no sale el correo de verificación
+  if (!EMAIL_USER || !EMAIL_PASS) {
+    console.warn(
+      'Aviso: faltan EMAIL_USER o EMAIL_PASS en tu .env; no se enviarán correos de verificación (prueba con "pnpm probar-correo").',
+    );
+  }
 
-// Creo una funcion asincrona para iniciar el servidor;
-const startServer = async () =>{
-    // Sin estas variables el login y la base de datos no pueden funcionar
-    if (!JWT_SECRET || !DATABASE_URL) {
-        console.error('Faltan variables de entorno: revisa JWT_SECRET y DATABASE_URL en tu .env (ver .env.example).');
-        process.exit(1);
-    }
-    // Sin credenciales de correo el registro funciona, pero no sale el correo de verificacion
-    if (!EMAIL_USER || !EMAIL_PASS) {
-        console.warn('Aviso: faltan EMAIL_USER o EMAIL_PASS en tu .env; no se enviarán correos de verificación (prueba con "pnpm probar-correo").');
-    }
-    console.log('Iniciando primer proceso, por favor espere.');
-    // Nos conectamos a la base de datos;
-    await connectDB();
-    console.log('Primer proceso terminado, iniciando servidor.');
-
-    // Iniciamos el servidor y escuchamos en el puerto definido
-    app.listen(PORT, () =>{
-        console.log(`El servidor se a iniciado en el puerto ${PORT} exitosamente, puede continuar.`);   
-    });
+  await connectDB();
+  app.listen(PORT, () => console.log(`Servidor escuchando en el puerto ${PORT}.`));
 };
 
-// Ejecutamos la funcion para poner todo en marcha
 startServer();

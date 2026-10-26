@@ -1,175 +1,118 @@
-import bcrypt from 'bcrypt'; //encriptar las claves de los doctores o administradores.
-import jwt from 'jsonwebtoken'; //Con esto generaremos y verificaremos tokens JWT.
-import { prisma } from '../config/db.js'; //cliente de la base de datos (tabla Staff: administradores y odontologos).
-import nodemailer from 'nodemailer'; // Con esto envaremos los emails.
-import { AppError } from '../utils/AppError.js'; //usaremos esto para capturar los errores
-import { 
-    PAGE_URL,
-    JWT_SECRET,
-    EMAIL_USER,
-    EMAIL_PASS, 
-    VERIF_TOKEN_EXPIRES,
-    SESSION_TOKEN_EXPIRES } from '../config.js';
+import { PAGE_URL } from "../config.js";
+import { AppError } from "../lib/AppError.js";
+import { escapeHtml, sendMail } from "../lib/mailer.js";
+import { hashPassword, verifyPassword } from "../lib/password.js";
+import { signSessionToken, signVerificationToken, verifySessionToken, verifyVerificationToken } from "../lib/tokens.js";
+import * as staffRepository from "../repositories/staffRepository.js";
 
-// Los correos se guardan y buscan en minusculas y sin espacios,
-// para que "Juan@Gmail.com " y "juan@gmail.com" sean la misma cuenta
-export const normalizeEmail = (email) => String(email ?? '').trim().toLowerCase();
+// Campos únicos del personal, en el orden en que se informa el conflicto
+const UNIQUE_FIELDS = [
+  ["email", "El correo ya se encuentra en uso"],
+  ["numberPhone", "El número de teléfono ya se encuentra en uso"],
+  ["numberId", "El número de identidad ya se encuentra en uso"],
+];
 
-    // registerUser(data)
-    // Crea un nuevo usuario de tipo Staff (doctor/admin) tras validar y encriptar su contraseña.
-    // Verifica unicidad de email.
-    // Hashea la contraseña. 
-export const registerUser = async (data) => {
-    const {
-        name,
-        lastName,
-        numberId,
-        address,
-        numberPhone,
-        birthday,
-        sex,
-        specialty,
-        password
-    } = data;
-    // Solo se aceptan estos dos roles; cualquier otro valor se registra como doctor
-    const role = data.role === 'admin' ? 'admin' : 'doctor';
-    // El admin puede activar la cuenta en el momento, sin esperar al correo de verificacion
-    const verified = data.verified === true;
-    const email = normalizeEmail(data.email);
-    if( !name ||
-        !lastName || 
-        !numberPhone || 
-        !email || 
-        !address || 
-        !numberId || 
-        !birthday || 
-        !sex || 
-        !specialty ||
-        !password){
-            throw new AppError('Todos los campos son obligatorios', 400);
-        }
+// Lanza un 409 con el campo del formulario si algún valor único ya lo usa otra persona
+export const assertUniqueStaffFields = async (values, ownId = null) => {
+  for (const [field, message] of UNIQUE_FIELDS) {
+    if (values[field] === undefined) continue;
+    const ownerId = await staffRepository.findOwnerOf(field, values[field]);
+    if (ownerId && ownerId !== ownId) throw new AppError(message, 409, { field });
+  }
+};
 
-        const emailExist = await prisma.staff.findUnique({ where: { email } });
-        const numberPhoneExist = await prisma.staff.findUnique({ where: { numberPhone } });
-        const numberIdExist = await prisma.staff.findUnique({ where: { numberId } });
-        if(emailExist){ 
-            throw new AppError('El correo ya se encuentra en uso', 409);
-          } else if(numberPhoneExist) {
-            throw new AppError('El numero de telefono ya se encuentra en uso', 409);
-          } else if(numberIdExist) {
-            throw new AppError('El numero de identidad ya se encuentra en uso', 409);
-          }
+const sendVerificationEmail = async (user) => {
+  const link = `${PAGE_URL}/verify/${user.id}/${signVerificationToken(user.id)}`;
+  await sendMail({
+    to: user.email,
+    subject: "Verificación de correo",
+    html: `
+      <p>Hola <strong>${escapeHtml(user.name)}</strong>,</p>
+      <p>Gracias por registrarte en <em>Luxury Smile</em>.</p>
+      <p>Haz clic en el enlace para verificar tu cuenta (válido por 1 hora):</p>
+      <p><a href="${link}">${link}</a></p>
+      <p>Si no solicitaste esta cuenta, ignora este correo.</p>
+    `,
+  });
+};
 
+// Un fallo del correo no deshace el alta: se informa para que el admin lo reenvíe
+const trySendVerificationEmail = async (user) => {
+  try {
+    await sendVerificationEmail(user);
+    return true;
+  } catch (error) {
+    console.error("No se pudo enviar el correo de verificación:", error.code ?? error.name);
+    return false;
+  }
+};
 
-        const passwordHash = await bcrypt.hash(password, 10);
-          
-        // crea y guarda el nuevo Staff o usuario
-        const newUser = await prisma.staff.create({
-            data: {
-                name,
-                lastName,
-                numberId,
-                address,
-                numberPhone,
-                birthday,
-                sex,
-                specialty,
-                email,
-                passwordHash,
-                role,
-                verified
-            }
-        });
-        return newUser;
-}
+export const registerStaff = async ({ password, ...data }) => {
+  await assertUniqueStaffFields(data);
+  const user = await staffRepository.create({ ...data, passwordHash: await hashPassword(password) });
+  const emailSent = user.verified ? false : await trySendVerificationEmail(user);
+  return { user, emailSent };
+};
 
-// sendVerificationEmail(user).
-// crea el JWT de la verificacion.
-// hace la verificacion para el frontend.
-// envia email al usuario.
- 
-export const sendVerificationEmail = async (user) => {
-    const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: VERIF_TOKEN_EXPIRES });
-    const link = `${PAGE_URL}/verify/${user.id}/${token}`;
+// Respuesta idéntica exista o no la cuenta, para no revelar qué correos están registrados
+export const resendVerification = async (email) => {
+  const user = await staffRepository.findByEmail(email);
+  if (!user || user.verified || user.deactivatedAt) return;
+  await sendVerificationEmail(user);
+};
 
+export const verifyEmail = async (id, token) => {
+  let subject;
+  try {
+    subject = verifyVerificationToken(token);
+  } catch {
+    throw new AppError("Token invalido o expirado", 401);
+  }
+  if (subject !== id) throw new AppError("Token invalido o expirado", 401);
 
-    const transporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 465,
-        secure: true,
-        auth: {
-            user: EMAIL_USER,
-            pass: EMAIL_PASS
-        }
+  const user = await staffRepository.findById(id);
+  if (!user) throw new AppError("Token invalido o expirado", 401);
+  if (!user.verified) await staffRepository.update(id, { verified: true });
+};
+
+export const login = async (email, password) => {
+  const user = await staffRepository.findByEmailWithPassword(email);
+  // Se compara aunque no exista el usuario, para que el tiempo de respuesta sea el mismo
+  const validPassword = await verifyPassword(password, user?.passwordHash);
+  if (!user || !validPassword)
+    throw new AppError("Correo o contraseña incorrectos", 401, { code: "INVALID_CREDENTIALS" });
+
+  if (!user.verified) {
+    throw new AppError("Debes verificar tu correo antes de iniciar sesion", 403, { code: "EMAIL_NOT_VERIFIED" });
+  }
+  if (user.deactivatedAt) {
+    throw new AppError("Tu cuenta está desactivada. Contacta con la administración.", 403, {
+      code: "ACCOUNT_DEACTIVATED",
     });
-    await transporter.sendMail({
-        from: EMAIL_USER,
-        to: user.email,
-        subject: 'verificacion de correo',
-        html:`
-        <p>Hola <strong>${user.name}</strong>,</p>
-        <p>Gracias por registrarte en <em>Luxury Smail</em>.</p>
-        <p>Haz clic en el enlace para verificar tu cuenta (válido por 1 hora):</p>
-        <p><a href="${link}">${link}</a></p>
-        <p>Si no solicitaste esta cuenta, ignora este correo.</p>
-        
-      `
-    });
-    return token;
-}
+  }
 
-// verifyUser(id, token)
-// Verificara el token, comprobara que el id coincida y marcara el campoverified en la base de datos
+  return { token: signSessionToken(user.id), role: user.role, name: user.name };
+};
 
-export const verifyUser = async (id, token) => {
-    try{
-        const payload = jwt.verify(token, JWT_SECRET);
-        if (payload.id !== id) {
-            throw new AppError('Token de verificacion invalido', 401);
-        }
-        await prisma.staff.update({ where: { id }, data: { verified: true } });
-        return { message: 'Cuenta Verificada exitosamente'}
-    } catch(error){
-        throw new AppError('Token invalido o expirado', 401);
-    }
-}
+const readSessionToken = (token) => {
+  try {
+    return verifySessionToken(token);
+  } catch (error) {
+    if (error.name === "TokenExpiredError") throw new AppError("Token expirado", 401, { code: "TOKEN_EXPIRED" });
+    throw new AppError("Token invalido", 401);
+  }
+};
 
-// loginUser, busca usuario por email y compara claves
-// Asegura que el correo este verificado y genera un JWT de sesion de 2h
+// El rol y el estado se leen de la base de datos y no del token, para que un cambio
+// de rol o una baja se apliquen al momento y no cuando caduque la sesión
+export const resolveSession = async (token) => {
+  const user = await staffRepository.findSessionById(readSessionToken(token));
+  if (!user || user.deactivatedAt) throw new AppError("Tu cuenta no está activa", 401);
+  return { id: user.id, role: user.role };
+};
 
-export const loginUser = async(rawEmail, password) =>{
-    const email = normalizeEmail(rawEmail);
-    // 1.- primero buscamos el usuario, el usuario es el correo.
-    // passwordHash se omite por defecto; aqui lo pedimos para comparar la clave
-    const user = await prisma.staff.findUnique({
-        where: { email },
-        omit: { passwordHash: false }
-    });
-    if(!user){
-        throw new AppError('Datos invalidos', 400);
-    }
-    //  2.- validamos la clave.
-    const valid = await bcrypt.compare(password, user.passwordHash);
-    if(!valid){
-        throw new AppError('Datos invalidos', 400);
-    }
- 
-    // 3.- verificamos que el mail esta confirmado.
-    if(!user.verified){
-        throw new AppError('Debes verificar tu correo antes de iniciar sesion', 403);
-    }
-
-    // 4.- una cuenta dada de baja ya no puede entrar
-    if(user.deactivatedAt){
-        throw new AppError('Tu cuenta está desactivada. Contacta con la administración.', 403);
-    }
-
-    // 5.- generamos token de sesion
-    const token = jwt.sign(
-        {id: user.id, role: user.role },
-        JWT_SECRET,
-        { expiresIn: SESSION_TOKEN_EXPIRES}
-    );
-    
-    return{ token, role: user.role, name: user.name};
+export const getCurrentUser = async (id) => {
+  const user = await staffRepository.findById(id);
+  if (!user) throw new AppError("Usuario no encontrado", 404);
+  return user;
 };

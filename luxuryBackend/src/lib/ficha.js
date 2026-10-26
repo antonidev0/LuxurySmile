@@ -92,7 +92,11 @@ const parseFichaDate = (value, label) => {
   return date.toISOString().slice(0, 10);
 };
 
-const clean = (value, max) => String(value ?? "").replace(/\s+/g, " ").trim().slice(0, max);
+const clean = (value, max) =>
+  String(value ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, max);
 
 // Índice opcional dentro de una lista (biotipo, fototipo)
 const optionIndex = (value, options) => {
@@ -113,7 +117,12 @@ export const sanitizeFicha = (input) => {
   const ficha = {};
   for (const [key, max] of Object.entries(TEXT_FIELDS)) {
     // El diagnóstico admite saltos de línea; el resto es una sola línea
-    ficha[key] = key === "diagnostico" ? String(input[key] ?? "").trim().slice(0, max) : clean(input[key], max);
+    ficha[key] =
+      key === "diagnostico"
+        ? String(input[key] ?? "")
+            .trim()
+            .slice(0, max)
+        : clean(input[key], max);
   }
   for (const [key, label] of Object.entries(DATE_FIELDS)) {
     ficha[key] = parseFichaDate(input[key], label);

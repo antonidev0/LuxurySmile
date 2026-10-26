@@ -1,7 +1,9 @@
 // Reglas de la agenda: estados, transiciones permitidas, horario y fechas en la zona de la clínica
 import { CLINIC_TIMEZONE } from "../config.js";
 import { AppError } from "./AppError.js";
-import { CLINIC_CLOSING, CLINIC_DAYS, CLINIC_OPENING } from "./availability.js";
+import { CLINIC_CLOSING, CLINIC_DAYS, CLINIC_OPENING, TIME_FORMAT, toMinutes } from "./availability.js";
+
+export { TIME_FORMAT, toMinutes };
 
 export const STATUSES = ["pendiente", "confirmada", "completada", "cancelada", "no_asistio"];
 
@@ -41,12 +43,6 @@ export const DOCTOR_STATUSES = ["completada", "no_asistio"];
 export const SLOT_MINUTES = 40;
 
 export const DATE_FORMAT = /^\d{4}-\d{2}-\d{2}$/;
-export const TIME_FORMAT = /^([01]\d|2[0-3]):[0-5]\d$/;
-
-export const toMinutes = (time) => {
-  const [h, m] = time.split(":").map(Number);
-  return h * 60 + m;
-};
 
 // La columna "date" solo guarda el día: "YYYY-MM-DD" <-> medianoche UTC
 export const toDay = (key) => new Date(`${key}T00:00:00.000Z`);
@@ -64,7 +60,10 @@ export const clinicNow = (now = new Date()) => {
     hourCycle: "h23",
   }).formatToParts(now);
   const get = (type) => parts.find((p) => p.type === type).value;
-  return { day: `${get("year")}-${get("month")}-${get("day")}`, minutes: Number(get("hour")) * 60 + Number(get("minute")) };
+  return {
+    day: `${get("year")}-${get("month")}-${get("day")}`,
+    minutes: Number(get("hour")) * 60 + Number(get("minute")),
+  };
 };
 
 export const isPast = (day, time) => {
@@ -92,8 +91,10 @@ export const parseSlot = (rawDate, rawTime) => {
 // Mensaje para un cambio de estado que no se permite
 export const transitionError = (from, to) => {
   if (from === "completada") return "Una cita completada no se puede modificar";
-  if (from === "cancelada") return "La cita está cancelada. Para volver a atender al paciente, crea una nueva cita desde la ficha.";
-  if (from === "no_asistio") return "El paciente no asistió a esta cita. Si lo solicita, crea una nueva cita desde la ficha.";
+  if (from === "cancelada")
+    return "La cita está cancelada. Para volver a atender al paciente, crea una nueva cita desde la ficha.";
+  if (from === "no_asistio")
+    return "El paciente no asistió a esta cita. Si lo solicita, crea una nueva cita desde la ficha.";
   if (to === "pendiente") return "Una cita confirmada no puede volver a pendiente";
   if (from === "pendiente") return "Primero confirma la cita";
   return "Cambio de estado no permitido";
