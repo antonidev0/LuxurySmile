@@ -34,8 +34,6 @@ import { fetchRecordForm, saveRecord } from "../../services/records.service";
 import { formatDay } from "../../utils/dates";
 import { ageFrom, BIOTIPOS, FOTOTIPOS, QUESTION_COLUMNS, toFicha } from "../../utils/ficha";
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
 const Section = ({ title, children }) => (
   <Box>
     <Text fontSize="xs" color="text.muted" textTransform="uppercase" letterSpacing="0.06em" fontWeight="600" mb={3}>
@@ -151,10 +149,6 @@ const MedicalRecordForm = ({ appointment, isOpen, onClose, onSaved }) => {
 
   const save = async () => {
     if (!ficha.nombre.trim()) return fail("Escribe el nombre del paciente.");
-    // Un año mal escrito en el campo de fecha (p. ej. de cinco cifras) llega al servidor como fecha inválida
-    if ([ficha.fecha, ficha.fechaNacimiento].some((value) => value && !DATE_RE.test(value))) {
-      return fail("Revisa la fecha y la fecha de nacimiento: el año debe tener cuatro cifras.");
-    }
     setSaving(true);
     setError("");
     try {
