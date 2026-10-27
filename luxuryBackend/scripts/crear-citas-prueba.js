@@ -100,6 +100,7 @@ const createAppointments = async (count) => {
   let day = clinicNow().day;
   let created = 0;
   let lastDay = day;
+  console.log(`Creando ${count} citas de prueba (doctores disponibles: ${doctors.length})...`);
 
   while (created < count) {
     for (const time of await freeTimesOn(day)) {
