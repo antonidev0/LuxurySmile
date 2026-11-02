@@ -1,9 +1,11 @@
 import { Router } from "express";
 import { createDoctorAppointment, getMyAppointments, getOccupiedTimes } from "../controllers/doctorController.js";
+import { updateMyAvailability } from "../controllers/profileController.js";
 import { authenticateJWT } from "../middlewares/authenticateJWT.js";
 import { doctorOnly } from "../middlewares/roles.js";
 import { validate } from "../middlewares/validate.js";
 import { createAppointmentBody, occupiedQuery } from "../validators/appointmentSchemas.js";
+import { availabilityBody } from "../validators/staffSchemas.js";
 
 const router = Router();
 
@@ -14,5 +16,7 @@ router.get("/appointments", getMyAppointments);
 router.post("/appointments", validate({ body: createAppointmentBody }), createDoctorAppointment);
 // Horas ocupadas de toda la clínica, sin datos de pacientes, para proponer horarios libres
 router.get("/occupied", validate({ query: occupiedQuery }), getOccupiedTimes);
+// Su propio horario de atención: no puede dejar fuera citas que ya tiene
+router.put("/availability", validate({ body: availabilityBody }), updateMyAvailability);
 
 export default router;

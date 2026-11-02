@@ -9,6 +9,11 @@ export const PASSWORD_POLICY_MESSAGE =
   "La contraseña necesita mínimo 8 caracteres, con una mayúscula, una minúscula y un número";
 export const isStrongPassword = (password) => PASSWORD_POLICY.test(password);
 
+export const strongPassword = z
+  .string(PASSWORD_POLICY_MESSAGE)
+  .max(200)
+  .regex(PASSWORD_POLICY, PASSWORD_POLICY_MESSAGE);
+
 const ageOn = (birthday, today = new Date()) => {
   const [y, m, d] = birthday.split("-").map(Number);
   const hadBirthday = today.getMonth() + 1 > m || (today.getMonth() + 1 === m && today.getDate() >= d);
@@ -36,7 +41,7 @@ export const registerBody = z.object({
   sex: z.enum(["hombre", "mujer"], "Sexo inválido"),
   specialty: requiredText("La especialidad o cargo", 100),
   email,
-  password: z.string(PASSWORD_POLICY_MESSAGE).max(200).regex(PASSWORD_POLICY, PASSWORD_POLICY_MESSAGE),
+  password: strongPassword,
   // true: el admin activa la cuenta sin esperar al correo de verificación
   verified: z.boolean().default(false),
 });
