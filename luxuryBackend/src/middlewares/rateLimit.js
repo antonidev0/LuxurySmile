@@ -39,3 +39,11 @@ export const registerLimiter = limiter({
   limit: 30,
   message: "Demasiados registros seguidos. Inténtalo más tarde.",
 });
+
+// Pide la contraseña actual: sin límite, una sesión robada podría adivinarla a base de intentos
+export const passwordChangeLimiter = limiter({
+  minutes: 15,
+  limit: 5,
+  skipSuccessfulRequests: true,
+  message: "Demasiados intentos de cambio de contraseña. Espera unos minutos y vuelve a intentarlo.",
+});

@@ -23,7 +23,30 @@ export const addDays = (key, days) => {
   return toDayKey(date);
 };
 
+// Días de la semana del calendario, de lunes a domingo: [abreviatura, nombre]
+export const WEEKDAY_NAMES = [
+  ["Lun", "Lunes"],
+  ["Mar", "Martes"],
+  ["Mié", "Miércoles"],
+  ["Jue", "Jueves"],
+  ["Vie", "Viernes"],
+  ["Sáb", "Sábado"],
+  ["Dom", "Domingo"],
+];
+
 export const monthKey = (key) => key.slice(0, 7);
+
+// Lunes de la semana del día (las semanas del calendario van de lunes a domingo)
+export const startOfWeek = (key) => addDays(key, -((fromDayKey(key).getDay() + 6) % 7));
+
+// Mismo día (o el último que exista) N meses antes o después
+export const addMonths = (key, months) => {
+  const date = fromDayKey(key);
+  const target = new Date(date.getFullYear(), date.getMonth() + months, 1);
+  const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+  target.setDate(Math.min(date.getDate(), lastDay));
+  return toDayKey(target);
+};
 
 const LOCALE = "es-VE";
 

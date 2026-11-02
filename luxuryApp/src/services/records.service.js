@@ -22,3 +22,11 @@ export const fetchRecordPDFUrl = (appointmentId) =>
   api
     .get(`/api/admin/${appointmentId}/pdf`, { responseType: "blob" })
     .then((res) => URL.createObjectURL(res.data));
+
+// Historia clínica completa del paciente de una cita: todas sus fichas, con canEdit en cada una
+export const fetchPatientRecords = (appointmentId) =>
+  api.get(`/api/pdf/appointments/${appointmentId}/records`).then((res) => res.data);
+
+// PDF de una ficha concreta del historial del paciente, como URL local (blob)
+export const fetchMedicalRecordPDFUrl = (recordId) =>
+  api.get(`/api/pdf/records/${recordId}/pdf`, { responseType: "blob" }).then((res) => URL.createObjectURL(res.data));

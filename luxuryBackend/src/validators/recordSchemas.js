@@ -3,6 +3,8 @@ import { id, optionalId } from "./common.js";
 
 export const recordParams = z.object({ appointmentId: id });
 
+export const recordIdParams = z.object({ recordId: id });
+
 // El contenido de la ficha (campos conocidos, fechas, opciones) lo valida y limpia sanitizeFicha
 export const saveRecordBody = z.object({
   recordId: optionalId,

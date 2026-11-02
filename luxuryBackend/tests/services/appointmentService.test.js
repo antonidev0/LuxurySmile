@@ -106,36 +106,6 @@ describe("assignDoctor", () => {
   });
 });
 
-describe("createForDoctor", () => {
-  const patient = { firstName: "Luis", lastName: "Gómez", ci: "V123", email: "luis@paciente.test", reason: "" };
-
-  it("asigna siempre la cita al doctor de la sesión", async () => {
-    vi.mocked(staffRepository.findForScheduling).mockResolvedValue([doctor]);
-    vi.mocked(appointmentRepository.create).mockResolvedValue({ id: "apt-9" });
-    vi.mocked(appointmentRepository.findForDoctor).mockResolvedValue(appointment({ id: "apt-9" }));
-
-    await appointmentService.createForDoctor(
-      { ...patient, date: "2026-10-27", time: "09:00", doctorIds: [] },
-      doctorUser,
-    );
-
-    expect(appointmentRepository.create).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "confirmada", assignedDoctors: { connect: [{ id: "doc-1" }] } }),
-      TX,
-    );
-  });
-
-  it("no permite crear citas en la agenda de otro doctor", async () => {
-    await expect(
-      appointmentService.createForDoctor(
-        { ...patient, date: "2026-10-27", time: "09:00", doctorIds: ["doc-2"] },
-        doctorUser,
-      ),
-    ).rejects.toMatchObject({ statusCode: 403 });
-    expect(appointmentRepository.create).not.toHaveBeenCalled();
-  });
-});
-
 describe("rebook", () => {
   it("solo reagenda citas canceladas o a las que el paciente no asistió", async () => {
     vi.mocked(appointmentRepository.findById).mockResolvedValue(appointment({ status: "confirmada" }));

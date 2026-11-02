@@ -3,8 +3,6 @@ import {
   AlertDescription,
   AlertIcon,
   Button,
-  Flex,
-  Input,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -12,25 +10,14 @@ import {
   ModalFooter,
   ModalHeader,
   ModalOverlay,
-  Stack,
-  Switch,
   Text,
 } from "@chakra-ui/react";
 import { useState } from "react";
 import { useNotify } from "../../hooks/useNotify";
 import { getErrorMessage } from "../../services/api";
 import { updateAvailability } from "../../services/staff.service";
-import { CLINIC_HOURS, clinicAvailability, WEEKDAYS } from "../../utils/availability";
-
-// Comprueba el horario antes de enviarlo (el backend repite las mismas reglas)
-const validate = (availability) => {
-  const days = Object.values(availability).filter(Boolean);
-  if (!days.length) return "Marca al menos un día de atención.";
-  if (days.some((r) => !r.start || !r.end)) return "Indica la hora de inicio y de fin de cada día.";
-  if (days.some((r) => r.start < CLINIC_HOURS.start || r.end > CLINIC_HOURS.end)) return "El horario debe estar entre las 8:00 a.m. y las 5:00 p.m.";
-  if (days.some((r) => r.start >= r.end)) return "La hora de inicio debe ser anterior a la de fin.";
-  return "";
-};
+import { availabilityProblem, CLINIC_SCHEDULE_TEXT, clinicAvailability } from "../../utils/availability";
+import AvailabilityEditor from "../availability/AvailabilityEditor";
 
 const AvailabilityForm = ({ person, onClose, onSaved }) => {
   const notify = useNotify();
@@ -38,10 +25,8 @@ const AvailabilityForm = ({ person, onClose, onSaved }) => {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const setDay = (day, range) => setAvailability((current) => ({ ...current, [day]: range }));
-
   const save = async () => {
-    const problem = validate(availability);
+    const problem = availabilityProblem(availability);
     setError(problem);
     if (problem) return;
     setSaving(true);
@@ -61,34 +46,9 @@ const AvailabilityForm = ({ person, onClose, onSaved }) => {
     <>
       <ModalBody>
         <Text fontSize="sm" color="text.muted" mb={4}>
-          Días y horas en los que atiende citas. La clínica abre de lunes a sábado, de 8:00 a.m. a 5:00 p.m.
+          Días y horas en los que atiende citas. {CLINIC_SCHEDULE_TEXT}
         </Text>
-        <Stack spacing={3}>
-          {WEEKDAYS.map(({ day, label }) => {
-            const range = availability[day];
-            return (
-              <Flex key={day} align="center" gap={3} wrap="wrap">
-                <Flex as="label" align="center" gap={3} w="130px" cursor="pointer">
-                  <Switch colorScheme="brand" isChecked={Boolean(range)} onChange={(e) => setDay(day, e.target.checked ? { ...CLINIC_HOURS } : null)} />
-                  <Text fontSize="sm" fontWeight="600">
-                    {label}
-                  </Text>
-                </Flex>
-                {range ? (
-                  <Flex align="center" gap={2} flex="1" minW="200px">
-                    <Input type="time" size="sm" min={CLINIC_HOURS.start} max={CLINIC_HOURS.end} value={range.start} aria-label={`${label}: desde`} onChange={(e) => setDay(day, { ...range, start: e.target.value })} />
-                    <Text fontSize="sm">a</Text>
-                    <Input type="time" size="sm" min={CLINIC_HOURS.start} max={CLINIC_HOURS.end} value={range.end} aria-label={`${label}: hasta`} onChange={(e) => setDay(day, { ...range, end: e.target.value })} />
-                  </Flex>
-                ) : (
-                  <Text fontSize="sm" color="text.muted">
-                    No atiende
-                  </Text>
-                )}
-              </Flex>
-            );
-          })}
-        </Stack>
+        <AvailabilityEditor value={availability} onChange={setAvailability} />
         {error && (
           <Alert status="error" borderRadius="xl" mt={4}>
             <AlertIcon />

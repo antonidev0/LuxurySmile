@@ -41,9 +41,12 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   }, []);
 
+  // Tras cambiar sus propios datos (perfil, horario) la sesión refleja la versión guardada
+  const updateUser = useCallback((changes) => setUser((current) => (current ? { ...current, ...changes } : current)), []);
+
   const value = useMemo(
-    () => ({ user, loading, isAuthenticated: Boolean(user), login, logout }),
-    [user, loading, login, logout]
+    () => ({ user, loading, isAuthenticated: Boolean(user), login, logout, updateUser }),
+    [user, loading, login, logout, updateUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

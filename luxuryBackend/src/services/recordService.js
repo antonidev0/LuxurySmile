@@ -23,6 +23,17 @@ const loadAccessible = async (appointmentId, user) => {
   return appointment;
 };
 
+// Un doctor ve todas las fichas de sus pacientes (continuidad clínica), pero solo edita las que creó él.
+// La administración puede editar cualquiera.
+const canEditRecord = (record, user) => user.role === "admin" || record.createdById === user.id;
+
+// El id de quien la creó no sale del backend: el front solo necesita saber si puede editarla
+const withPermissions = (record, user) => {
+  if (!record) return null;
+  const { createdById, ...rest } = record;
+  return { ...rest, canEdit: canEditRecord({ createdById }, user) };
+};
+
 // La ficha que ya usa la cita, la última del paciente y los datos de la cita para empezar una nueva
 export const getRecordForm = async (appointmentId, user) => {
   const appointment = await loadAccessible(appointmentId, user);
@@ -31,8 +42,8 @@ export const getRecordForm = async (appointmentId, user) => {
     medicalRecordRepository.findLatestForPatient(patientKey(appointment.ci)),
   ]);
   return {
-    current,
-    latest,
+    current: withPermissions(current, user),
+    latest: withPermissions(latest, user),
     defaults: {
       fecha: appointment.date.toISOString().slice(0, 10),
       nombre: `${appointment.firstName} ${appointment.lastName}`.trim(),
@@ -41,10 +52,13 @@ export const getRecordForm = async (appointmentId, user) => {
   };
 };
 
-const loadPatientRecord = async (recordId, ci) => {
+const loadEditableRecord = async (recordId, ci, user) => {
   if (!recordId) return null;
   const record = await medicalRecordRepository.findOwnership(recordId);
   if (!record || record.patientCi !== ci) throw new AppError("La ficha no pertenece a este paciente", 400);
+  if (!canEditRecord(record, user)) {
+    throw new AppError("Solo puedes editar las fichas que creaste. Crea una ficha nueva para esta consulta.", 403);
+  }
   return record;
 };
 
@@ -72,7 +86,7 @@ export const saveRecord = async (appointmentId, { recordId, data: input }, user)
   const appointment = await loadAccessible(appointmentId, user);
   const data = sanitizeFicha(input);
   const ci = patientKey(appointment.ci);
-  const existing = await loadPatientRecord(recordId, ci);
+  const existing = await loadEditableRecord(recordId, ci, user);
   const actor = await actorOf(user);
 
   // Cada versión del PDF tiene su propio nombre para que nadie vea una copia anterior en caché
@@ -89,7 +103,7 @@ export const saveRecord = async (appointmentId, { recordId, data: input }, user)
     });
     // El PDF anterior de la ficha ya no lo usa ninguna cita
     if (existing) await removePdf(existing.pdfPath);
-    return { record, created: !existing, historialPDF: pdfPath };
+    return { record: withPermissions(record, user), created: !existing, historialPDF: pdfPath };
   } catch (error) {
     await removePdf(pdfPath);
     throw error;
@@ -116,4 +130,27 @@ export const getPdfFile = async (appointmentId, user) => {
   if (!appointment.historialPDF) throw new AppError("Historial no encontrado", 404);
   if (!pdfExists(appointment.historialPDF)) throw new AppError("Archivo no encontrado", 404);
   return resolvePdf(appointment.historialPDF);
+};
+
+// Un doctor solo consulta la historia de pacientes con los que tiene o tuvo alguna cita
+const assertTreatsPatient = async (patientCi, user) => {
+  if (user.role !== "doctor") return;
+  const cis = await appointmentRepository.findPatientCisAssignedTo(user.id);
+  if (!cis.some((ci) => patientKey(ci) === patientCi)) throw new AppError("No tienes acceso a este paciente", 403);
+};
+
+// Historia clínica completa del paciente de una cita: todas sus fichas, las escriba quien las escriba
+export const listPatientRecords = async (appointmentId, user) => {
+  const appointment = await loadAccessible(appointmentId, user);
+  const records = await medicalRecordRepository.findAllForPatient(patientKey(appointment.ci));
+  return records.map((record) => withPermissions(record, user));
+};
+
+// PDF de una ficha concreta del historial del paciente
+export const getRecordPdfFile = async (recordId, user) => {
+  const record = await medicalRecordRepository.findOwnership(recordId);
+  if (!record) throw new AppError("Ficha no encontrada", 404);
+  await assertTreatsPatient(record.patientCi, user);
+  if (!pdfExists(record.pdfPath)) throw new AppError("Archivo no encontrado", 404);
+  return resolvePdf(record.pdfPath);
 };

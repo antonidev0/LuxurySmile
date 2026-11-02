@@ -1,6 +1,8 @@
 import { Button, Flex, Grid, Select } from "@chakra-ui/react";
 import { useMemo, useState } from "react";
 import { FiPlus, FiX } from "react-icons/fi";
+import DayCalendar from "../../components/calendar/DayCalendar";
+import WeekCalendar from "../../components/calendar/WeekCalendar";
 import AgendaList from "../../components/dashboard/AgendaList";
 import AppointmentDrawer from "../../components/dashboard/AppointmentDrawer";
 import MonthCalendar from "../../components/dashboard/MonthCalendar";
@@ -9,12 +11,18 @@ import ErrorState from "../../components/ui/ErrorState";
 import LoadingState from "../../components/ui/LoadingState";
 import PageHeader from "../../components/ui/PageHeader";
 import Panel from "../../components/ui/Panel";
-import { useAuth } from "../../context/AuthContext";
+import SegmentedControl from "../../components/ui/SegmentedControl";
 import { useAppointments } from "../../hooks/useAppointments";
 import { useSelectedAppointment } from "../../hooks/useSelectedAppointment";
 import { useStaff } from "../../hooks/useStaff";
 import { applyFilters, appointmentsOn, dayCounts, dayCountsText, EMPTY_FILTERS, STATUS_META, STATUSES } from "../../utils/appointments";
-import { formatLongDay, fromDayKey, monthKey, todayKey, toDayKey } from "../../utils/dates";
+import { addDays, addMonths, formatLongDay, fromDayKey, monthKey, startOfWeek, todayKey, toDayKey } from "../../utils/dates";
+
+const VIEWS = [
+  ["day", "Día"],
+  ["week", "Semana"],
+  ["month", "Mes"],
+];
 
 const monthOf = (key) => {
   const d = fromDayKey(key);
@@ -22,16 +30,20 @@ const monthOf = (key) => {
 };
 const keyOfMonth = ({ year, month }) => `${year}-${String(month + 1).padStart(2, "0")}`;
 
+// Al cambiar de mes, el día elegido es hoy si es el mes actual o, si no, el día 1
+const firstDayShown = (month) => (monthKey(todayKey()) === month ? todayKey() : `${month}-01`);
+
+// Agenda en vista diaria, semanal o mensual. El admin ve todas las citas y crea nuevas;
+// el doctor solo ve las suyas y no crea ni cancela citas.
 const CalendarPage = () => {
   const { appointments, loading, error, reload, refresh, replaceAppointment, addAppointment, role } = useAppointments();
   const isAdmin = role === "admin";
-  const { user } = useAuth();
   const { doctors } = useStaff(isAdmin);
+  const [view, setView] = useState("month");
   const [selectedDay, setSelectedDay] = useState(todayKey);
-  const [month, setMonth] = useState(() => monthOf(todayKey()));
   // Solo se usan el estado y (admin) el doctor de los filtros de citas
   const [filters, setFilters] = useState(EMPTY_FILTERS);
-  // Nueva cita: { date } desde la cabecera o { patient } desde la ficha de una cita
+  // Nueva cita (solo admin): { date } desde la cabecera o { patient } desde la ficha de una cita
   const [creating, setCreating] = useState(null);
   const drawer = useSelectedAppointment(appointments);
 
@@ -39,90 +51,107 @@ const CalendarPage = () => {
   const dayList = useMemo(() => appointmentsOn(filtered, selectedDay), [filtered, selectedDay]);
   const dayTotal = useMemo(() => appointmentsOn(appointments, selectedDay).length, [appointments, selectedDay]);
   const hasFilters = Boolean(filters.status || filters.doctor);
+  const emptyDay = hasFilters && dayTotal
+    ? { emptyTitle: "No hay citas con estos filtros", emptyDescription: "Restablece los filtros para ver todas las citas del día." }
+    : { emptyTitle: "Sin citas este día" };
 
   const setFilter = (key) => (e) => setFilters((f) => ({ ...f, [key]: e.target.value }));
-
-  // Al cambiar de mes, la lista sigue al mes visible: hoy si es el mes actual, si no el día 1
-  const changeMonth = (next) => {
-    setMonth(next);
-    const key = keyOfMonth(next);
-    if (monthKey(selectedDay) !== key) setSelectedDay(monthKey(todayKey()) === key ? todayKey() : `${key}-01`);
+  const goToday = () => setSelectedDay(todayKey());
+  const changeMonth = (next) => setSelectedDay(firstDayShown(keyOfMonth(next)));
+  const shift = (delta) => {
+    if (view === "day") return setSelectedDay((d) => addDays(d, delta));
+    if (view === "week") return setSelectedDay((d) => addDays(d, 7 * delta));
+    setSelectedDay((d) => firstDayShown(monthKey(addMonths(d, delta))));
   };
-
-  const goToday = () => {
-    setMonth(monthOf(todayKey()));
-    setSelectedDay(todayKey());
+  const openDay = (key) => {
+    setSelectedDay(key);
+    setView("day");
   };
 
   // La cita nueva aparece en el calendario y se abre su ficha
   const handleCreated = (created) => {
     addAppointment(created);
-    const day = toDayKey(created.date);
-    setMonth(monthOf(day));
-    setSelectedDay(day);
+    setSelectedDay(toDayKey(created.date));
     drawer.open(created);
   };
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} onRetry={reload} />;
 
+  const navigation = { onPrev: () => shift(-1), onNext: () => shift(1), onToday: goToday };
+
   return (
     <>
       <PageHeader
         title="Calendario"
-        description="Toca un día para ver sus citas."
+        description={isAdmin ? "Agenda de la clínica por día, semana o mes." : "Tu agenda por día, semana o mes."}
         actions={
-          // Admin y doctores crean citas desde el panel; el doctor, solo en su propia agenda
-          <Button leftIcon={<FiPlus />} onClick={() => setCreating({ date: selectedDay })}>
-            Nueva cita
-          </Button>
+          isAdmin && (
+            <Button leftIcon={<FiPlus />} onClick={() => setCreating({ date: selectedDay })}>
+              Nueva cita
+            </Button>
+          )
         }
       />
-      <Grid templateColumns={{ base: "minmax(0, 1fr)", xl: "minmax(0, 2fr) minmax(0, 1fr)" }} gap={6} alignItems="start">
-        <Panel>
-          <Flex gap={2} mb={4} wrap="wrap">
-            <Select size="sm" w={{ base: "full", sm: "auto" }} value={filters.status} onChange={setFilter("status")} bg="white" aria-label="Filtrar por estado">
-              <option value="">Todos los estados</option>
-              {STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {STATUS_META[s].label}
+      <Flex gap={2} mb={4} wrap="wrap" align="center" justify="space-between">
+        <SegmentedControl options={VIEWS} value={view} onChange={setView} label="Vista del calendario" />
+        <Flex gap={2} wrap="wrap">
+          <Select size="sm" w={{ base: "full", sm: "auto" }} value={filters.status} onChange={setFilter("status")} bg="white" aria-label="Filtrar por estado">
+            <option value="">Todos los estados</option>
+            {STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {STATUS_META[s].label}
+              </option>
+            ))}
+          </Select>
+          {isAdmin && (
+            <Select size="sm" w={{ base: "full", sm: "auto" }} value={filters.doctor} onChange={setFilter("doctor")} bg="white" aria-label="Filtrar por doctor">
+              <option value="">Todos los doctores</option>
+              <option value="none">Sin asignar</option>
+              {doctors.map((d) => (
+                <option key={d.id} value={d.id}>
+                  Dr. {d.name} {d.lastName}
+                  {d.deactivatedAt ? " (de baja)" : ""}
                 </option>
               ))}
             </Select>
-            {isAdmin && (
-              <Select size="sm" w={{ base: "full", sm: "auto" }} value={filters.doctor} onChange={setFilter("doctor")} bg="white" aria-label="Filtrar por doctor">
-                <option value="">Todos los doctores</option>
-                <option value="none">Sin asignar</option>
-                {doctors.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    Dr. {d.name} {d.lastName}
-                    {d.deactivatedAt ? " (de baja)" : ""}
-                  </option>
-                ))}
-              </Select>
-            )}
-            <Button size="sm" variant="ghost" leftIcon={<FiX />} onClick={() => setFilters(EMPTY_FILTERS)} isDisabled={!hasFilters}>
-              Restablecer
-            </Button>
-          </Flex>
-          <MonthCalendar
-            month={month}
-            onMonthChange={changeMonth}
-            onToday={goToday}
-            appointments={filtered}
-            selected={selectedDay}
-            onSelect={setSelectedDay}
-          />
+          )}
+          <Button size="sm" variant="ghost" leftIcon={<FiX />} onClick={() => setFilters(EMPTY_FILTERS)} isDisabled={!hasFilters}>
+            Restablecer
+          </Button>
+        </Flex>
+      </Flex>
+
+      {view === "day" && (
+        <Panel>
+          <DayCalendar day={selectedDay} appointments={filtered} onSelectAppointment={drawer.open} {...navigation} {...emptyDay} />
         </Panel>
-        <Panel title={formatLongDay(selectedDay)} subtitle={dayCountsText(dayCounts(dayList))} position={{ xl: "sticky" }} top={{ xl: 24 }}>
-          <AgendaList
-            appointments={dayList}
-            onSelect={drawer.open}
-            emptyTitle={hasFilters && dayTotal ? "No hay citas con estos filtros" : "Sin citas este día"}
-            emptyDescription={hasFilters && dayTotal ? "Restablece los filtros para ver todas las citas del día." : undefined}
-          />
+      )}
+
+      {view === "week" && (
+        <Panel>
+          <WeekCalendar weekStart={startOfWeek(selectedDay)} appointments={filtered} onSelectDay={openDay} onSelectAppointment={drawer.open} {...navigation} />
         </Panel>
-      </Grid>
+      )}
+
+      {view === "month" && (
+        <Grid templateColumns={{ base: "minmax(0, 1fr)", xl: "minmax(0, 2fr) minmax(0, 1fr)" }} gap={6} alignItems="start">
+          <Panel>
+            <MonthCalendar
+              month={monthOf(selectedDay)}
+              onMonthChange={changeMonth}
+              onToday={goToday}
+              appointments={filtered}
+              selected={selectedDay}
+              onSelect={setSelectedDay}
+            />
+          </Panel>
+          <Panel title={formatLongDay(selectedDay)} subtitle={dayCountsText(dayCounts(dayList))} position={{ xl: "sticky" }} top={{ xl: 24 }}>
+            <AgendaList appointments={dayList} onSelect={drawer.open} {...emptyDay} />
+          </Panel>
+        </Grid>
+      )}
+
       <AppointmentDrawer
         appointment={drawer.selected}
         isOpen={drawer.isOpen}
@@ -136,18 +165,19 @@ const CalendarPage = () => {
         appointments={appointments}
         canAssign={isAdmin}
       />
-      <RescheduleModal
-        mode="create"
-        patient={creating?.patient}
-        initialDate={creating?.date}
-        isOpen={Boolean(creating)}
-        onClose={() => setCreating(null)}
-        doctors={doctors}
-        appointments={appointments}
-        selfDoctor={isAdmin ? undefined : user}
-        onSaved={handleCreated}
-        onConflict={refresh}
-      />
+      {isAdmin && (
+        <RescheduleModal
+          mode="create"
+          patient={creating?.patient}
+          initialDate={creating?.date}
+          isOpen={Boolean(creating)}
+          onClose={() => setCreating(null)}
+          doctors={doctors}
+          appointments={appointments}
+          onSaved={handleCreated}
+          onConflict={refresh}
+        />
+      )}
     </>
   );
 };

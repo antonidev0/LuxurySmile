@@ -9,6 +9,7 @@ import AppointmentsTable from "../../components/dashboard/AppointmentsTable";
 import ErrorState from "../../components/ui/ErrorState";
 import LoadingState from "../../components/ui/LoadingState";
 import PageHeader from "../../components/ui/PageHeader";
+import SegmentedControl from "../../components/ui/SegmentedControl";
 import Panel from "../../components/ui/Panel";
 import { useAppointments } from "../../hooks/useAppointments";
 import { useSelectedAppointment } from "../../hooks/useSelectedAppointment";
@@ -20,6 +21,12 @@ const SORTS = [
   ["priority", "Prioridad: pendientes y próximas primero"],
   ["asc", "Fecha y hora (más antiguas primero)"],
   ["desc", "Fecha y hora (más recientes primero)"],
+];
+
+const SCOPES = [
+  ["upcoming", "Próximas"],
+  ["past", "Pasadas"],
+  ["all", "Todas"],
 ];
 
 // Gestión de citas: el admin ve todas y las gestiona; el doctor ve las suyas
@@ -91,17 +98,7 @@ const AppointmentsPage = () => {
               ))}
             </Select>
             {!byDate && (
-              <HStack spacing={1} bg="gray.100" p={1} borderRadius="full">
-                {[
-                  ["upcoming", "Próximas"],
-                  ["past", "Pasadas"],
-                  ["all", "Todas"],
-                ].map(([key, label]) => (
-                  <Button key={key} size="xs" px={3} variant={scope === key ? "solid" : "ghost"} onClick={() => setScope(key)}>
-                    {label}
-                  </Button>
-                ))}
-              </HStack>
+              <SegmentedControl options={SCOPES} value={scope} onChange={setScope} label="Periodo" />
             )}
           </HStack>
         }
@@ -110,11 +107,11 @@ const AppointmentsPage = () => {
           appointments={visible}
           onSelect={drawer.open}
           emptyTitle={appointments.length ? "No hay citas con estos filtros" : "Todavía no hay citas"}
-          emptyDescription={appointments.length ? "Prueba a cambiar o limpiar los filtros." : isAdmin ? "Las citas que registre el personal aparecerán aquí." : "Cuando te asignen una cita o crees una desde el calendario aparecerá aquí."}
+          emptyDescription={appointments.length ? "Prueba a cambiar o limpiar los filtros." : isAdmin ? "Las citas que registre el personal aparecerán aquí." : "Cuando la administración te asigne una cita aparecerá aquí."}
         />
         {!isAdmin && (
           <Text fontSize="xs" color="text.muted" mt={4}>
-            Puedes crear citas en tu agenda desde el calendario. Para asignar o reasignar otras citas, pídeselo a la administración.
+            La administración crea, confirma, reprograma y cancela las citas. Tú puedes marcarlas como completadas o como no asistió el día de la cita.
           </Text>
         )}
       </Panel>

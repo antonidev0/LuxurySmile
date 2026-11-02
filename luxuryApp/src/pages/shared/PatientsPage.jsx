@@ -1,34 +1,15 @@
-import {
-  Avatar,
-  Badge,
-  Box,
-  Drawer,
-  DrawerBody,
-  DrawerCloseButton,
-  DrawerContent,
-  DrawerHeader,
-  DrawerOverlay,
-  Flex,
-  HStack,
-  Input,
-  InputGroup,
-  InputLeftElement,
-  SimpleGrid,
-  Stack,
-  Text,
-} from "@chakra-ui/react";
+import { Avatar, Badge, Box, HStack, Input, InputGroup, InputLeftElement, SimpleGrid, Text } from "@chakra-ui/react";
 import { useMemo, useState } from "react";
 import { FiSearch, FiUsers } from "react-icons/fi";
-import MedicalRecordActions from "../../components/dashboard/MedicalRecordActions";
+import PatientDrawer from "../../components/patients/PatientDrawer";
 import EmptyState from "../../components/ui/EmptyState";
 import ErrorState from "../../components/ui/ErrorState";
 import LoadingState from "../../components/ui/LoadingState";
 import PageHeader from "../../components/ui/PageHeader";
 import Panel from "../../components/ui/Panel";
-import StatusBadge from "../../components/ui/StatusBadge";
 import { useAppointments } from "../../hooks/useAppointments";
 import { groupPatients, matchesSearch } from "../../utils/appointments";
-import { formatDay, formatTime } from "../../utils/dates";
+import { formatDay } from "../../utils/dates";
 
 const PatientCard = ({ patient, onOpen }) => (
   <Box
@@ -105,7 +86,11 @@ const PatientsPage = () => {
     <>
       <PageHeader
         title={role === "admin" ? "Pacientes" : "Mis pacientes"}
-        description={`${patients.length} pacientes, agrupados por cédula a partir de sus citas.`}
+        description={
+          role === "admin"
+            ? `${patients.length} pacientes, agrupados por cédula a partir de sus citas.`
+            : `${patients.length} pacientes que tienes asignados o que has atendido.`
+        }
       />
       <Panel>
         <InputGroup mb={5} maxW={{ md: "420px" }}>
@@ -125,45 +110,7 @@ const PatientsPage = () => {
         )}
       </Panel>
 
-      <Drawer isOpen={Boolean(selected)} onClose={() => setSelectedCi(null)} size="md">
-        <DrawerOverlay />
-        <DrawerContent>
-          <DrawerCloseButton mt={2} />
-          {selected && (
-            <>
-              <DrawerHeader borderBottomWidth="1px">
-                <Text fontSize="xl">
-                  {selected.firstName} {selected.lastName}
-                </Text>
-                <Text fontSize="sm" fontWeight="400" color="text.muted">
-                  {selected.ci} · {selected.email}
-                </Text>
-              </DrawerHeader>
-              <DrawerBody py={6}>
-                <Text fontWeight="700" fontSize="sm" mb={3}>
-                  Historial de citas ({selected.appointments.length})
-                </Text>
-                <Stack spacing={3}>
-                  {[...selected.appointments].reverse().map((appt) => (
-                    <Box key={appt.id} p={4} borderRadius="xl" borderWidth="1px" borderColor="border.subtle">
-                      <Flex justify="space-between" align="center" mb={2} gap={2}>
-                        <Text fontWeight="600" fontSize="sm">
-                          {formatDay(appt.date)} · {formatTime(appt.time)}
-                        </Text>
-                        <StatusBadge status={appt.status} />
-                      </Flex>
-                      <Text fontSize="xs" color="text.muted" mb={3}>
-                        {appt.assignedDoctors?.length ? appt.assignedDoctors.map((d) => `Dr. ${d.name} ${d.lastName}`).join(", ") : "Sin doctor asignado"}
-                      </Text>
-                      <MedicalRecordActions appointment={appt} onUpdated={replaceAppointment} size="xs" />
-                    </Box>
-                  ))}
-                </Stack>
-              </DrawerBody>
-            </>
-          )}
-        </DrawerContent>
-      </Drawer>
+      <PatientDrawer patient={selected} onClose={() => setSelectedCi(null)} onUpdated={replaceAppointment} />
     </>
   );
 };

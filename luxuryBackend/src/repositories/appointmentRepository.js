@@ -34,6 +34,16 @@ export const findAssignedTo = (doctorId) =>
     orderBy: BY_SCHEDULE,
   });
 
+// Cédulas de los pacientes con los que el doctor tiene o tuvo alguna cita
+export const findPatientCisAssignedTo = async (doctorId) => {
+  const appointments = await prisma.appointment.findMany({
+    where: { assignedDoctors: { some: { id: doctorId } } },
+    select: { ci: true },
+    distinct: ["ci"],
+  });
+  return appointments.map((a) => a.ci);
+};
+
 export const findById = (id, db = prisma) => db.appointment.findUnique({ where: { id } });
 
 export const findWithDoctors = (id, db = prisma) => db.appointment.findUnique({ where: { id }, include: WITH_DOCTORS });
@@ -51,14 +61,6 @@ export const findActiveOnDay = (date, { excludeId } = {}, db = prisma) =>
     where: { date, status: { notIn: FREE_STATUSES }, ...(excludeId ? { id: { not: excludeId } } : {}) },
     select: { id: true, time: true, firstName: true, lastName: true, assignedDoctors: { select: { id: true } } },
   });
-
-export const findOccupiedTimes = async (date) => {
-  const appointments = await prisma.appointment.findMany({
-    where: { date, status: { notIn: FREE_STATUSES } },
-    select: { time: true },
-  });
-  return appointments.map((a) => a.time);
-};
 
 export const create = (data, db = prisma) => db.appointment.create({ data, select: { id: true } });
 

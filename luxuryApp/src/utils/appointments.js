@@ -50,6 +50,10 @@ export const dayCountsText = ({ active, cancelled }) =>
 export const appointmentsOn = (appointments, dayKey) =>
   sortByDateTime(appointments.filter((a) => toDayKey(a.date) === dayKey));
 
+// Citas entre dos días ("YYYY-MM-DD", ambos incluidos), ordenadas
+export const appointmentsBetween = (appointments, fromKey, toKey) =>
+  sortByDateTime(appointments.filter((a) => toDayKey(a.date) >= fromKey && toDayKey(a.date) <= toKey));
+
 export const upcomingAppointments = (appointments, limit = 6) => {
   const today = todayKey();
   return sortByDateTime(appointments.filter((a) => isActive(a) && toDayKey(a.date) >= today)).slice(0, limit);

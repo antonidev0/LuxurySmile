@@ -24,9 +24,20 @@ export const uploadAppointmentPDF = asyncHandler(async (request, response) => {
   response.status(200).json({ message: "PDF subido exitosamente", historialPDF, medicalRecordId: null });
 });
 
-export const getAppointmentPDF = asyncHandler(async (request, response) => {
-  const filePath = await recordService.getPdfFile(request.params.id, request.user);
-  // Datos de salud: que no queden copias en cachés intermedias ni del navegador
+// Datos de salud: que no queden copias en cachés intermedias ni del navegador
+const sendPrivatePdf = (response, filePath) => {
   response.set("Cache-Control", "no-store");
   response.sendFile(filePath);
+};
+
+export const getAppointmentPDF = asyncHandler(async (request, response) => {
+  sendPrivatePdf(response, await recordService.getPdfFile(request.params.id, request.user));
+});
+
+export const getPatientRecords = asyncHandler(async (request, response) => {
+  response.status(200).json(await recordService.listPatientRecords(request.params.appointmentId, request.user));
+});
+
+export const getRecordPDF = asyncHandler(async (request, response) => {
+  sendPrivatePdf(response, await recordService.getRecordPdfFile(request.params.recordId, request.user));
 });

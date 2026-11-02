@@ -2,6 +2,7 @@ import { Button, Grid, GridItem, SimpleGrid } from "@chakra-ui/react";
 import { useMemo } from "react";
 import { FiCalendar, FiCheckCircle, FiClock, FiUsers } from "react-icons/fi";
 import { Link } from "react-router-dom";
+import AvailabilitySummary from "../../components/availability/AvailabilitySummary";
 import AgendaList from "../../components/dashboard/AgendaList";
 import AppointmentDrawer from "../../components/dashboard/AppointmentDrawer";
 import MonthlyTrendChart from "../../components/dashboard/MonthlyTrendChart";
@@ -20,6 +21,8 @@ import {
   groupPatients,
   isActive,
   monthlySeries,
+  plural,
+  sortByDateTime,
   upcomingAppointments,
 } from "../../utils/appointments";
 import { formatTime, greeting, monthKey, todayKey, toDayKey } from "../../utils/dates";
@@ -39,7 +42,7 @@ const DoctorOverviewPage = () => {
       upcoming: upcomingAppointments(appointments.filter((a) => toDayKey(a.date) > today), 6),
       completedMonth: appointments.filter((a) => a.status === "completada" && monthKey(toDayKey(a.date)) === monthKey(today)).length,
       patients: groupPatients(appointments).length,
-      pendingRecords: appointments.filter((a) => a.status === "completada" && !a.historialPDF).length,
+      pendingRecords: sortByDateTime(appointments.filter((a) => a.status === "completada" && !a.historialPDF)).reverse(),
       counts: countByStatus(appointments),
       monthly: monthlySeries(appointments, 6),
     };
@@ -58,8 +61,8 @@ const DoctorOverviewPage = () => {
             : "No tienes más citas pendientes hoy."
         }
         actions={
-          <Button as={Link} to="/doctor/dashboard/citas" leftIcon={<FiCalendar />}>
-            Ver mis citas
+          <Button as={Link} to="/doctor/dashboard/calendario" leftIcon={<FiCalendar />}>
+            Ver mi calendario
           </Button>
         }
       />
@@ -68,7 +71,7 @@ const DoctorOverviewPage = () => {
         <StatCard label="Citas hoy" value={stats.today.length} icon={FiCalendar} hint={`${stats.today.filter(isActive).length} por atender`} />
         <StatCard label="Próximas" value={upcomingAppointments(appointments, 999).length} icon={FiClock} color="orange" hint="Pendientes y confirmadas" />
         <StatCard label="Completadas este mes" value={stats.completedMonth} icon={FiCheckCircle} color="green" />
-        <StatCard label="Mis pacientes" value={stats.patients} icon={FiUsers} color="purple" hint={stats.pendingRecords ? `${stats.pendingRecords} ${stats.pendingRecords === 1 ? "historia" : "historias"} por cargar` : "Historias al día"} />
+        <StatCard label="Mis pacientes" value={stats.patients} icon={FiUsers} color="purple" hint={stats.pendingRecords.length ? `${plural(stats.pendingRecords.length, "ficha")} por llenar` : "Fichas al día"} />
       </SimpleGrid>
 
       <Grid templateColumns={{ base: "1fr", xl: "3fr 2fr" }} gap={6}>
@@ -90,6 +93,31 @@ const DoctorOverviewPage = () => {
         <GridItem>
           <Panel title="Estado de mis citas">
             <StatusDonut counts={stats.counts} />
+          </Panel>
+        </GridItem>
+        <GridItem>
+          <Panel
+            title="Fichas clínicas por llenar"
+            subtitle="Citas completadas sin historia clínica"
+            action={
+              <Button as={Link} to="/doctor/dashboard/historias" size="xs" variant="ghost">
+                Ver todas
+              </Button>
+            }
+          >
+            <AgendaList appointments={stats.pendingRecords.slice(0, 5)} onSelect={drawer.open} showDate emptyTitle="Todo al día" emptyDescription="Todas tus consultas completadas tienen su ficha." />
+          </Panel>
+        </GridItem>
+        <GridItem>
+          <Panel
+            title="Mi horario"
+            action={
+              <Button as={Link} to="/doctor/dashboard/disponibilidad" size="xs" variant="ghost">
+                Ver disponibilidad
+              </Button>
+            }
+          >
+            <AvailabilitySummary availability={user.availability} highlightDay={new Date().getDay()} />
           </Panel>
         </GridItem>
       </Grid>

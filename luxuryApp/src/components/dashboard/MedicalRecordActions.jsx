@@ -1,22 +1,9 @@
-import {
-  Box,
-  Button,
-  ButtonGroup,
-  Input,
-  Modal,
-  ModalBody,
-  ModalCloseButton,
-  ModalContent,
-  ModalHeader,
-  ModalOverlay,
-  Stack,
-  Text,
-  useDisclosure,
-} from "@chakra-ui/react";
+import { Box, Button, ButtonGroup, Input, useDisclosure } from "@chakra-ui/react";
 import { useEffect, useRef, useState } from "react";
 import { FiDownload, FiEdit3, FiEye, FiFilePlus, FiUpload } from "react-icons/fi";
 import { useNotify } from "../../hooks/useNotify";
 import { fetchRecordPDFUrl, uploadRecordPDF } from "../../services/records.service";
+import PdfViewerModal from "../records/PdfViewerModal";
 import MedicalRecordForm from "./MedicalRecordForm";
 
 /**
@@ -131,25 +118,12 @@ const MedicalRecordActions = ({ appointment, onUpdated, size = "sm" }) => {
 
       {form.isOpen && <MedicalRecordForm appointment={appointment} isOpen onClose={form.onClose} onSaved={onUpdated} />}
 
-      <Modal isOpen={viewer.isOpen} onClose={viewer.onClose} size={{ base: "full", md: "5xl" }}>
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>
-            <Stack spacing={0}>
-              <Text>Historia clínica</Text>
-              <Text fontSize="sm" fontWeight="400" color="text.muted">
-                {appointment.firstName} {appointment.lastName} · {appointment.ci}
-              </Text>
-            </Stack>
-          </ModalHeader>
-          <ModalCloseButton />
-          <ModalBody pb={6}>
-            <Box h={{ base: "calc(100vh - 120px)", md: "75vh" }} borderRadius="lg" overflow="hidden" borderWidth="1px">
-              <iframe title="Historia clínica" src={pdfUrl} width="100%" height="100%" style={{ border: 0 }} />
-            </Box>
-          </ModalBody>
-        </ModalContent>
-      </Modal>
+      <PdfViewerModal
+        isOpen={viewer.isOpen}
+        onClose={viewer.onClose}
+        url={pdfUrl}
+        subtitle={`${appointment.firstName} ${appointment.lastName} · ${appointment.ci}`}
+      />
     </Box>
   );
 };

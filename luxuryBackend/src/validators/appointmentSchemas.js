@@ -40,7 +40,3 @@ export const createAppointmentBody = z.object({
 export const noteBody = z.object({
   note: requiredText("La nota", 1000),
 });
-
-export const occupiedQuery = z.object({
-  date: z.string("Fecha requerida (YYYY-MM-DD)").regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha requerida (YYYY-MM-DD)"),
-});

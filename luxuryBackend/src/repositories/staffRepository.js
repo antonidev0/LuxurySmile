@@ -40,6 +40,10 @@ export const findByEmail = (email) => prisma.staff.findUnique({ where: { email }
 export const findByEmailWithPassword = (email) =>
   prisma.staff.findUnique({ where: { email }, omit: { passwordHash: false } });
 
+// Para comprobar la contraseña actual antes de cambiarla
+export const findPasswordHashById = (id) =>
+  prisma.staff.findUnique({ where: { id }, select: { id: true, passwordHash: true } });
+
 export const findSessionById = (id) =>
   prisma.staff.findUnique({ where: { id }, select: { id: true, role: true, deactivatedAt: true } });
 

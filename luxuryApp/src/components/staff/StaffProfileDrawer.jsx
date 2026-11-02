@@ -18,22 +18,12 @@ import {
 } from "@chakra-ui/react";
 import { FiCalendar } from "react-icons/fi";
 import { Link } from "react-router-dom";
-import { CLINIC_HOURS, WEEKDAYS } from "../../utils/availability";
 import { upcomingAppointments } from "../../utils/appointments";
 import { formatDay, formatTime } from "../../utils/dates";
 import { ACCOUNT_STATUS, accountStatus, ROLE_LABELS, staffName } from "../../utils/staff";
+import AvailabilitySummary from "../availability/AvailabilitySummary";
+import DetailField from "../ui/DetailField";
 import StatusBadge from "../ui/StatusBadge";
-
-const Detail = ({ label, children }) => (
-  <Box>
-    <Text fontSize="xs" color="text.muted" textTransform="uppercase" letterSpacing="0.06em">
-      {label}
-    </Text>
-    <Text fontWeight="500" wordBreak="break-word">
-      {children || "—"}
-    </Text>
-  </Box>
-);
 
 const SectionTitle = ({ children }) => (
   <Text fontWeight="700" fontSize="sm" mb={3}>
@@ -77,12 +67,12 @@ const StaffProfileDrawer = ({ person, appointments, onClose }) => {
             <DrawerBody py={6}>
               <Stack spacing={6}>
                 <SimpleGrid columns={{ base: 1, sm: 2 }} spacing={4}>
-                  {isDoctor && <Detail label="Especialidad">{person.specialty}</Detail>}
-                  <Detail label="Correo">{person.email}</Detail>
-                  <Detail label="Teléfono">{person.numberPhone}</Detail>
-                  <Detail label="Cédula">{person.numberId}</Detail>
-                  <Detail label="En el equipo desde">{formatDay(person.createdAt)}</Detail>
-                  {person.deactivatedAt && <Detail label="Dado de baja el">{formatDay(person.deactivatedAt)}</Detail>}
+                  {isDoctor && <DetailField label="Especialidad">{person.specialty}</DetailField>}
+                  <DetailField label="Correo">{person.email}</DetailField>
+                  <DetailField label="Teléfono">{person.numberPhone}</DetailField>
+                  <DetailField label="Cédula">{person.numberId}</DetailField>
+                  <DetailField label="En el equipo desde">{formatDay(person.createdAt)}</DetailField>
+                  {person.deactivatedAt && <DetailField label="Dado de baja el">{formatDay(person.deactivatedAt)}</DetailField>}
                 </SimpleGrid>
 
                 {isDoctor && (
@@ -130,24 +120,7 @@ const StaffProfileDrawer = ({ person, appointments, onClose }) => {
                     <Divider />
                     <Box>
                       <SectionTitle>Disponibilidad</SectionTitle>
-                      {!person.availability && (
-                        <Text fontSize="sm" color="text.muted" mb={2}>
-                          Horario de la clínica (sin horario propio).
-                        </Text>
-                      )}
-                      <Stack spacing={1} fontSize="sm">
-                        {WEEKDAYS.map(({ day, label }) => {
-                          const range = person.availability ? person.availability[day] : CLINIC_HOURS;
-                          return (
-                            <Flex key={day} justify="space-between">
-                              <Text>{label}</Text>
-                              <Text color={range ? undefined : "text.muted"}>
-                                {range ? `${formatTime(range.start)} – ${formatTime(range.end)}` : "No atiende"}
-                              </Text>
-                            </Flex>
-                          );
-                        })}
-                      </Stack>
+                      <AvailabilitySummary availability={person.availability} />
                     </Box>
                   </>
                 )}

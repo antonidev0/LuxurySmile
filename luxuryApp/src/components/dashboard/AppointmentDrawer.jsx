@@ -141,7 +141,7 @@ const AppointmentDrawer = ({
                       <Detail label="Completada por">
                         {appointment.completedBy.map((d) => (
                           <Text key={d.name} fontSize="sm">
-                            {d.name} · {d.specialty}
+                            {[d.name, d.specialty].filter(Boolean).join(" · ")}
                           </Text>
                         ))}
                       </Detail>

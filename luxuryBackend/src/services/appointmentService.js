@@ -8,7 +8,6 @@ import {
   OPEN_STATUSES,
   parseSlot,
   STATUS_LABELS,
-  toDay,
   transitionError,
   TRANSITIONS,
 } from "../lib/appointmentRules.js";
@@ -39,9 +38,6 @@ const loadOpen = async (tx, id) => {
 export const listForAdmin = () => appointmentRepository.findAllForAdmin();
 
 export const listForDoctor = async (doctorId) => (await appointmentRepository.findAssignedTo(doctorId)).map(forDoctor);
-
-// Solo las horas: el doctor no ve los pacientes de agendas ajenas, pero sí qué horarios no puede proponer
-export const occupiedTimes = (day) => appointmentRepository.findOccupiedTimes(toDay(day));
 
 // Con replaceDoctorId se cambia un doctor por otro en un solo paso
 export const assignDoctor = async (id, { doctorId, replaceDoctorId }, user) => {
@@ -286,20 +282,10 @@ const createForStaff = async ({ firstName, lastName, ci, email, date, time, reas
   return inScheduleTransaction((tx) => createWithHistory(tx, { patient, slot, doctorIds, reason, actor }));
 };
 
-// El admin crea citas para cualquier doctor (o sin doctor, pendientes de asignar)
+// Solo el admin crea citas: para cualquier doctor o sin doctor, pendientes de asignar
 export const createForAdmin = async (data, user) => {
   const id = await createForStaff(data, data.doctorIds, user);
   return appointmentRepository.findForAdmin(id);
-};
-
-// El doctor solo crea citas en su propia agenda: el doctor asignado es siempre el de la sesión,
-// nunca un id enviado desde el navegador
-export const createForDoctor = async (data, user) => {
-  if (data.doctorIds.some((id) => id !== user.id)) {
-    throw new AppError("Solo puedes crear citas en tu propia agenda", 403);
-  }
-  const id = await createForStaff(data, [user.id], user);
-  return forDoctor(await appointmentRepository.findForDoctor(id));
 };
 
 export const getHistory = async (id) => {
