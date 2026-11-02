@@ -1,11 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { hashPassword, verifyPassword } from "../../src/lib/password.js";
-import * as appointmentRepository from "../../src/repositories/appointmentRepository.js";
 import * as staffRepository from "../../src/repositories/staffRepository.js";
 import * as profileService from "../../src/services/profileService.js";
-import { freezeClock } from "../helpers.js";
 
-vi.mock("../../src/repositories/appointmentRepository.js");
 vi.mock("../../src/repositories/staffRepository.js");
 
 describe("updateOwnProfile", () => {
@@ -50,35 +47,5 @@ describe("changeOwnPassword", () => {
       profileService.changeOwnPassword("doc-1", { currentPassword: "Otra1234", newPassword: "Nueva1234" }),
     ).rejects.toMatchObject({ statusCode: 400, field: "currentPassword" });
     expect(staffRepository.update).not.toHaveBeenCalled();
-  });
-});
-
-describe("updateOwnAvailability", () => {
-  const mondayMorning = { 1: { start: "08:00", end: "12:00" } };
-
-  it("guarda el horario si ninguna cita futura queda fuera", async () => {
-    freezeClock();
-    vi.mocked(appointmentRepository.findOpenAssignedTo).mockResolvedValue([
-      { id: "apt-1", date: new Date("2026-11-02T00:00:00.000Z"), time: "09:00" },
-    ]);
-
-    await profileService.updateOwnAvailability("doc-1", mondayMorning);
-
-    expect(staffRepository.update).toHaveBeenCalledWith("doc-1", { availability: mondayMorning });
-    vi.useRealTimers();
-  });
-
-  it("no lo guarda si deja fuera citas abiertas e indica cuáles", async () => {
-    freezeClock();
-    vi.mocked(staffRepository.update).mockClear();
-    const outside = { id: "apt-2", date: new Date("2026-11-03T00:00:00.000Z"), time: "10:00" };
-    vi.mocked(appointmentRepository.findOpenAssignedTo).mockResolvedValue([outside]);
-
-    await expect(profileService.updateOwnAvailability("doc-1", mondayMorning)).rejects.toMatchObject({
-      statusCode: 409,
-      details: { appointments: [outside] },
-    });
-    expect(staffRepository.update).not.toHaveBeenCalled();
-    vi.useRealTimers();
   });
 });

@@ -62,14 +62,6 @@ export const findActiveOnDay = (date, { excludeId } = {}, db = prisma) =>
     select: { id: true, time: true, firstName: true, lastName: true, assignedDoctors: { select: { id: true } } },
   });
 
-export const findOccupiedTimes = async (date) => {
-  const appointments = await prisma.appointment.findMany({
-    where: { date, status: { notIn: FREE_STATUSES } },
-    select: { time: true },
-  });
-  return appointments.map((a) => a.time);
-};
-
 export const create = (data, db = prisma) => db.appointment.create({ data, select: { id: true } });
 
 export const update = (id, data, db = prisma) => db.appointment.update({ where: { id }, data, select: { id: true } });

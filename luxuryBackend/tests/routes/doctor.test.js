@@ -29,24 +29,74 @@ describe("privacidad entre doctores", () => {
   });
 });
 
-describe("PUT /api/doctor/availability", () => {
-  it("el doctor guarda su propio horario, nunca el de otro", async () => {
-    vi.mocked(appointmentRepository.findOpenAssignedTo).mockResolvedValue([]);
-    vi.mocked(staffRepository.update).mockResolvedValue({ id: "doctor-1" });
+describe("lo que el doctor no puede hacer", () => {
+  const doctorSession = () => sessionAs("doctor");
 
+  it("no crea citas", async () => {
     const res = await request(app)
-      .put("/api/doctor/availability")
-      .set("Authorization", sessionAs("doctor"))
-      .send({ availability: { 2: { start: "09:00", end: "13:00" } }, id: "doctor-2" });
+      .post("/api/doctor/appointments")
+      .set("Authorization", doctorSession())
+      .send({ firstName: "Luis", lastName: "Gómez", ci: "V1", email: "l@p.test", date: "2026-11-03", time: "09:00" });
 
-    expect(res.status).toBe(200);
-    expect(staffRepository.update).toHaveBeenCalledWith("doctor-1", {
-      availability: { 2: { start: "09:00", end: "13:00" } },
-    });
+    expect(res.status).toBe(404);
+    expect(appointmentRepository.create).not.toHaveBeenCalled();
   });
 
-  it("un admin no usa esta ruta", async () => {
-    const res = await request(app).put("/api/doctor/availability").set("Authorization", sessionAs("admin")).send({});
+  it("no crea citas por la ruta de la administración", async () => {
+    const res = await request(app)
+      .post("/api/admin/appointments")
+      .set("Authorization", doctorSession())
+      .send({ firstName: "Luis", lastName: "Gómez", ci: "V1", email: "l@p.test", date: "2026-11-03", time: "09:00" });
+
+    expect(res.status).toBe(403);
+    expect(appointmentRepository.create).not.toHaveBeenCalled();
+  });
+
+  it("no cancela ni confirma sus citas", async () => {
+    vi.mocked(staffRepository.findActorById).mockResolvedValue({ name: "Ana", lastName: "Pérez", role: "doctor" });
+
+    for (const status of ["cancelada", "confirmada"]) {
+      const res = await request(app)
+        .patch("/api/admin/apt-1/updateStatus")
+        .set("Authorization", doctorSession())
+        .send({ status, reason: "No puedo" });
+
+      expect(res.status).toBe(403);
+    }
+    expect(appointmentRepository.update).not.toHaveBeenCalled();
+  });
+
+  it("no reprograma citas ni cambia horarios", async () => {
+    const reschedule = await request(app)
+      .patch("/api/admin/apt-1/reschedule")
+      .set("Authorization", doctorSession())
+      .send({ date: "2026-11-03", time: "09:00" });
+    const availability = await request(app)
+      .put("/api/doctor/availability")
+      .set("Authorization", doctorSession())
+      .send({ availability: { 1: { start: "08:00", end: "12:00" } } });
+    const othersAvailability = await request(app)
+      .put("/api/admin/staff/doctor-2/availability")
+      .set("Authorization", doctorSession())
+      .send({ availability: { 1: { start: "08:00", end: "12:00" } } });
+
+    expect(reschedule.status).toBe(403);
+    expect(availability.status).toBe(404);
+    expect(othersAvailability.status).toBe(403);
+    expect(staffRepository.update).not.toHaveBeenCalled();
+  });
+
+  it("no ve la lista del personal ni la agenda de otros doctores", async () => {
+    const staff = await request(app).get("/api/admin/getDoctors").set("Authorization", doctorSession());
+    const all = await request(app).get("/api/admin/Allappointments").set("Authorization", doctorSession());
+
+    expect(staff.status).toBe(403);
+    expect(all.status).toBe(403);
+    expect(staffRepository.findAll).not.toHaveBeenCalled();
+  });
+
+  it("no ve el historial administrativo de una cita", async () => {
+    const res = await request(app).get("/api/admin/apt-1/history").set("Authorization", doctorSession());
     expect(res.status).toBe(403);
   });
 });

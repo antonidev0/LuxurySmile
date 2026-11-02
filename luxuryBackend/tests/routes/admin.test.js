@@ -60,15 +60,6 @@ describe("validación en el borde", () => {
     expect(res.body.error.details.map((d) => d.field)).toEqual(expect.arrayContaining(["lastName", "ci", "email"]));
   });
 
-  it("valida la fecha de las horas ocupadas", async () => {
-    const res = await request(app)
-      .get("/api/doctor/occupied")
-      .query({ date: "mañana" })
-      .set("Authorization", sessionAs("doctor"));
-
-    expect(res.status).toBe(400);
-  });
-
   it("los datos del personal se validan antes de guardarse", async () => {
     const res = await request(app)
       .patch("/api/admin/staff/doc-1")
