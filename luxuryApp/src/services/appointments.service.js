@@ -1,6 +1,6 @@
 import api from "./api";
 
-// Solo el personal con sesión gestiona y crea citas: la web pública no tiene reserva.
+// Solo la administración crea y gestiona citas: la web pública no tiene reserva.
 // El admin ve todas las citas; el doctor solo las que tiene asignadas
 export const fetchAppointmentsForRole = (role) =>
   api
@@ -34,11 +34,3 @@ export const addAppointmentNote = (id, note) => api.post(`/api/admin/${id}/notes
 // Nueva cita registrada por la administración (paciente nuevo o ya conocido por su cédula)
 export const createAdminAppointment = ({ firstName, lastName, ci, email, date, time, doctorIds, reason }) =>
   api.post("/api/admin/appointments", { firstName, lastName, ci, email, date, time, doctorIds, reason }).then((res) => res.data.appointment);
-
-// Nueva cita en la agenda del doctor con sesión: el servidor la asigna siempre a ese doctor
-export const createDoctorAppointment = ({ firstName, lastName, ci, email, date, time, reason }) =>
-  api.post("/api/doctor/appointments", { firstName, lastName, ci, email, date, time, reason }).then((res) => res.data.appointment);
-
-// Horas ocupadas de la clínica un día (sin datos de pacientes), para que el doctor vea los horarios libres
-export const fetchOccupiedTimes = (date) =>
-  api.get("/api/doctor/occupied", { params: { date } }).then((res) => res.data.occupiedTimes || []);

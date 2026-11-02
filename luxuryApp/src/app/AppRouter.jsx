@@ -17,6 +17,7 @@ const AdminOverviewPage = lazy(() => import("../pages/admin/AdminOverviewPage"))
 const StaffPage = lazy(() => import("../pages/admin/StaffPage"));
 const RegisterStaffPage = lazy(() => import("../pages/admin/RegisterStaffPage"));
 const DoctorOverviewPage = lazy(() => import("../pages/doctor/DoctorOverviewPage"));
+const AvailabilityPage = lazy(() => import("../pages/doctor/AvailabilityPage"));
 
 const AppointmentsPage = lazy(() => import("../pages/shared/AppointmentsPage"));
 const CalendarPage = lazy(() => import("../pages/shared/CalendarPage"));
@@ -67,6 +68,7 @@ const AppRouter = () => (
         <Route path="doctor/dashboard" element={<DashboardLayout />}>
           <Route index element={<DoctorOverviewPage />} />
           {sharedDashboardRoutes}
+          <Route path="disponibilidad" element={<AvailabilityPage />} />
         </Route>
       </Route>
     </Routes>

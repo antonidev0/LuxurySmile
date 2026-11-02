@@ -5,7 +5,7 @@ const NAME_PART = "[A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑáéíóúñü'-]+";
 const VALIDATION_NAME = new RegExp(`^${NAME_PART}(\\s${NAME_PART})*$`);
 const ID_NUMBER = /^[0-9]{5,15}$/;
 const PHONE = /^\+?\d{7,15}$/;
-const VALIDATION_PASSWORD = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}$/;
+export const VALIDATION_PASSWORD = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}$/;
 
 // Edad cumplida a partir de "YYYY-MM-DD"
 const ageFrom = (value) => {
@@ -31,7 +31,7 @@ const lastNameField = z
   .min(1, { message: 'El apellido es obligatorio' })
   .regex(VALIDATION_NAME, { message: 'Cada apellido debe empezar con mayúscula. Ej: Rodríguez Díaz' });
 
-const phoneField = z
+export const phoneField = z
   .string()
   .trim()
   .min(1, { message: 'El teléfono es obligatorio' })

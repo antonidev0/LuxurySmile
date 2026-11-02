@@ -1,6 +1,7 @@
 import {
   FiCalendar,
   FiClipboard,
+  FiClock,
   FiFileText,
   FiGrid,
   FiUser,
@@ -21,12 +22,14 @@ export const DASHBOARD_NAV = {
     { label: "Registrar personal", icon: FiUserPlus, to: "/admin/dashboard/registro" },
     { label: "Mi perfil", icon: FiUser, to: "/admin/dashboard/perfil" },
   ],
+  // El doctor solo ve sus propias citas y pacientes; no crea, cancela ni reprograma citas
   doctor: [
-    { label: "Resumen", icon: FiGrid, to: "/doctor/dashboard", end: true },
+    { label: "Dashboard", icon: FiGrid, to: "/doctor/dashboard", end: true },
     { label: "Mis citas", icon: FiClipboard, to: "/doctor/dashboard/citas" },
     { label: "Calendario", icon: FiCalendar, to: "/doctor/dashboard/calendario" },
-    { label: "Mis pacientes", icon: FiUsers, to: "/doctor/dashboard/pacientes" },
-    { label: "Historias", icon: FiFileText, to: "/doctor/dashboard/historias" },
+    { label: "Pacientes", icon: FiUsers, to: "/doctor/dashboard/pacientes" },
+    { label: "Historia clínica", icon: FiFileText, to: "/doctor/dashboard/historias" },
+    { label: "Disponibilidad", icon: FiClock, to: "/doctor/dashboard/disponibilidad" },
     { label: "Mi perfil", icon: FiUser, to: "/doctor/dashboard/perfil" },
   ],
 };

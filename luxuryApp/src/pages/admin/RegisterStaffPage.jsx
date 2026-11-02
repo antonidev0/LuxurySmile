@@ -12,7 +12,6 @@ import {
   Grid,
   HStack,
   Input,
-  Progress,
   Radio,
   RadioGroup,
   SimpleGrid,
@@ -28,7 +27,8 @@ import PasswordInput from "../../components/staff/PasswordInput";
 import RegisterSuccess from "../../components/staff/RegisterSuccess";
 import RoleSelector from "../../components/staff/RoleSelector";
 import StaffPreviewCard from "../../components/staff/StaffPreviewCard";
-import { generatePassword, passwordStrength, STRENGTH_LABELS } from "../../components/staff/passwordStrength";
+import { generatePassword } from "../../components/staff/passwordStrength";
+import PasswordStrengthMeter from "../../components/staff/PasswordStrengthMeter";
 import PageHeader from "../../components/ui/PageHeader";
 import Panel from "../../components/ui/Panel";
 import { SPECIALTIES } from "../../constants/specialties";
@@ -107,7 +107,6 @@ const RegisterStaffPage = () => {
   } = useForm({ resolver: zodResolver(staffSchema), mode: "onTouched", defaultValues: DEFAULT_VALUES });
 
   const values = watch();
-  const strength = passwordStrength(values.password);
 
   const changeRole = (role) => {
     setValue("role", role, { shouldValidate: true });
@@ -222,12 +221,7 @@ const RegisterStaffPage = () => {
                   </Field>
                 </SimpleGrid>
                 <Flex gap={4} align="center" wrap="wrap">
-                  <Box flex="1" minW="200px">
-                    <Progress value={(strength / 4) * 100} size="xs" borderRadius="full" colorScheme={STRENGTH_LABELS[strength].color} />
-                    <Text fontSize="xs" color="text.muted" mt={1}>
-                      Seguridad: {values.password ? STRENGTH_LABELS[strength].label : "—"}
-                    </Text>
-                  </Box>
+                  <PasswordStrengthMeter password={values.password} flex="1" minW="200px" />
                   <Button size="sm" variant="outline" leftIcon={<FiRefreshCw />} onClick={fillPassword}>
                     Generar contraseña
                   </Button>

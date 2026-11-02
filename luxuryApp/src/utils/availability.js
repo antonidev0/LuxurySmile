@@ -23,3 +23,15 @@ export const isAvailableAt = (availability, date, time) => {
   const minutes = toMinutes(time);
   return minutes >= toMinutes(range.start) && minutes <= toMinutes(range.end);
 };
+
+// Comprueba el horario antes de enviarlo (el backend repite las mismas reglas). Devuelve el problema o "".
+export const availabilityProblem = (availability) => {
+  const days = Object.values(availability).filter(Boolean);
+  if (!days.length) return "Marca al menos un día de atención.";
+  if (days.some((r) => !r.start || !r.end)) return "Indica la hora de inicio y de fin de cada día.";
+  if (days.some((r) => r.start < CLINIC_HOURS.start || r.end > CLINIC_HOURS.end)) return "El horario debe estar entre las 8:00 a.m. y las 5:00 p.m.";
+  if (days.some((r) => r.start >= r.end)) return "La hora de inicio debe ser anterior a la de fin.";
+  return "";
+};
+
+export const CLINIC_SCHEDULE_TEXT = "La clínica abre de lunes a sábado, de 8:00 a.m. a 5:00 p.m.";

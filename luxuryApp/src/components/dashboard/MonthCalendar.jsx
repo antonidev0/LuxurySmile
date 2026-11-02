@@ -1,17 +1,8 @@
-import { Box, Button, Flex, Grid, HStack, IconButton, Text } from "@chakra-ui/react";
-import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
+import { Box, Grid, HStack, Text } from "@chakra-ui/react";
+import CalendarToolbar from "../calendar/CalendarToolbar";
 import { dayCounts, dayCountsText, STATUS_META, STATUSES } from "../../utils/appointments";
-import { formatLongDay, formatMonth, todayKey, toDayKey } from "../../utils/dates";
+import { formatLongDay, formatMonth, todayKey, toDayKey, WEEKDAY_NAMES } from "../../utils/dates";
 
-const WEEKDAYS = [
-  ["Lun", "Lunes"],
-  ["Mar", "Martes"],
-  ["Mié", "Miércoles"],
-  ["Jue", "Jueves"],
-  ["Vie", "Viernes"],
-  ["Sáb", "Sábado"],
-  ["Dom", "Domingo"],
-];
 const pad = (n) => String(n).padStart(2, "0");
 
 // Cuadrícula del mes (semanas de lunes a domingo)
@@ -47,21 +38,16 @@ const MonthCalendar = ({ month, onMonthChange, onToday, appointments, selected, 
 
   return (
     <Box>
-      <Flex justify="space-between" align="center" mb={4} gap={2}>
-        <Text as="h2" fontWeight="700" fontSize="lg" aria-live="polite" sx={{ "&::first-letter": { textTransform: "uppercase" } }}>
-          {formatMonth(`${month.year}-${pad(month.month + 1)}`, { month: "long", year: "numeric" })}
-        </Text>
-        <HStack spacing={1}>
-          <Button size="sm" variant="outline" onClick={onToday}>
-            Hoy
-          </Button>
-          <IconButton size="sm" variant="ghost" aria-label="Mes anterior" icon={<FiChevronLeft />} onClick={() => shift(-1)} />
-          <IconButton size="sm" variant="ghost" aria-label="Mes siguiente" icon={<FiChevronRight />} onClick={() => shift(1)} />
-        </HStack>
-      </Flex>
+      <CalendarToolbar
+        title={formatMonth(`${month.year}-${pad(month.month + 1)}`, { month: "long", year: "numeric" })}
+        unit="Mes"
+        onPrev={() => shift(-1)}
+        onNext={() => shift(1)}
+        onToday={onToday}
+      />
 
       <Grid templateColumns="repeat(7, 1fr)" gap={{ base: 1, md: 2 }}>
-        {WEEKDAYS.map(([short, long]) => (
+        {WEEKDAY_NAMES.map(([short, long]) => (
           <Text key={short} as="abbr" title={long} textDecoration="none" fontSize="xs" fontWeight="600" color="text.muted" textAlign="center" pb={1}>
             {short}
           </Text>
