@@ -13,15 +13,17 @@ import {
 import { useMemo, useState } from "react";
 import { FiCheckCircle, FiFileText, FiSearch } from "react-icons/fi";
 import MedicalRecordActions from "../../components/dashboard/MedicalRecordActions";
+import PatientDrawer from "../../components/patients/PatientDrawer";
 import EmptyState from "../../components/ui/EmptyState";
 import ErrorState from "../../components/ui/ErrorState";
 import LoadingState from "../../components/ui/LoadingState";
 import PageHeader from "../../components/ui/PageHeader";
+import SegmentedControl from "../../components/ui/SegmentedControl";
 import Panel from "../../components/ui/Panel";
 import StatCard from "../../components/ui/StatCard";
 import StatusBadge from "../../components/ui/StatusBadge";
 import { useAppointments } from "../../hooks/useAppointments";
-import { matchesSearch, sortByDateTime } from "../../utils/appointments";
+import { groupPatients, matchesSearch, sortByDateTime } from "../../utils/appointments";
 import { formatDay, formatTime } from "../../utils/dates";
 
 const FILTERS = [
@@ -30,11 +32,13 @@ const FILTERS = [
   ["all", "Todas"],
 ];
 
-// Historias clínicas: lista todas las citas y permite llenar la ficha, subir o ver su PDF
+// Historia clínica: lista las citas (todas el admin, las suyas el doctor) para llenar la ficha, subir o ver su PDF,
+// y abre la historia completa de cada paciente
 const MedicalRecordsPage = () => {
   const { appointments, loading, error, reload, replaceAppointment } = useAppointments();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("missing");
+  const [patientCi, setPatientCi] = useState(null);
 
   const relevant = useMemo(() => appointments.filter((a) => a.status !== "cancelada"), [appointments]);
   const withRecord = relevant.filter((a) => a.historialPDF).length;
@@ -50,12 +54,17 @@ const MedicalRecordsPage = () => {
     [relevant, filter, search]
   );
 
+  const patient = useMemo(() => (patientCi ? groupPatients(appointments).find((p) => p.ci === patientCi) : null), [appointments, patientCi]);
+
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} onRetry={reload} />;
 
   return (
     <>
-      <PageHeader title="Historias clínicas" description="Llena la ficha clínica de la clínica en cada consulta (se genera su PDF) o sube el PDF del paciente." />
+      <PageHeader
+        title="Historia clínica"
+        description="Llena la ficha clínica en cada consulta (se genera su PDF) o sube el PDF. Toca el nombre de un paciente para ver toda su historia."
+      />
 
       <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4} mb={6}>
         <StatCard label="Con historia" value={withRecord} icon={FiCheckCircle} color="green" />
@@ -71,13 +80,7 @@ const MedicalRecordsPage = () => {
             </InputLeftElement>
             <Input placeholder="Buscar paciente o cédula" value={search} onChange={(e) => setSearch(e.target.value)} />
           </InputGroup>
-          <HStack spacing={1} bg="gray.100" p={1} borderRadius="full" alignSelf={{ base: "flex-start", md: "center" }}>
-            {FILTERS.map(([key, label]) => (
-              <Button key={key} size="xs" px={3} variant={filter === key ? "solid" : "ghost"} onClick={() => setFilter(key)}>
-                {label}
-              </Button>
-            ))}
-          </HStack>
+          <SegmentedControl options={FILTERS} value={filter} onChange={setFilter} label="Filtrar por historia" alignSelf={{ base: "flex-start", md: "center" }} />
         </Flex>
 
         {list.length ? (
@@ -95,9 +98,9 @@ const MedicalRecordsPage = () => {
               >
                 <Box flex="1" minW={0}>
                   <HStack spacing={2} mb={1} flexWrap="wrap">
-                    <Text fontWeight="600">
+                    <Button variant="link" color="gray.800" fontWeight="600" onClick={() => setPatientCi(appt.ci)}>
                       {appt.firstName} {appt.lastName}
-                    </Text>
+                    </Button>
                     <StatusBadge status={appt.status} />
                   </HStack>
                   <Text fontSize="sm" color="text.muted">
@@ -112,6 +115,8 @@ const MedicalRecordsPage = () => {
           <EmptyState icon={FiFileText} title="Nada por aquí" description="No hay citas que coincidan con el filtro." />
         )}
       </Panel>
+
+      <PatientDrawer patient={patient} onClose={() => setPatientCi(null)} onUpdated={replaceAppointment} defaultTab="historia" />
     </>
   );
 };

@@ -91,8 +91,10 @@ const MedicalRecordForm = ({ appointment, isOpen, onClose, onSaved }) => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  // Ficha que se puede editar: la que ya usa esta cita o, si no, la última del paciente
+  // Ficha que se puede editar: la que ya usa esta cita o, si no, la última del paciente.
+  // Un doctor solo edita las fichas que creó él (canEdit lo decide el servidor)
   const target = info ? info.current ?? info.latest : null;
+  const canEditTarget = Boolean(target?.canEdit);
 
   // Una ficha nueva parte de la anterior (los antecedentes del paciente no cambian de una consulta a otra)
   // con la fecha de esta cita y sin la firma, o de los datos de la cita si no hay ficha previa
@@ -111,9 +113,10 @@ const MedicalRecordForm = ({ appointment, isOpen, onClose, onSaved }) => {
       .then((data) => {
         if (!alive) return;
         const base = data.current ?? data.latest;
+        const editable = Boolean(base?.canEdit);
         setInfo(data);
-        setMode(base ? "edit" : "new");
-        setFicha(base ? toFicha(base.data) : newFicha(data));
+        setMode(editable ? "edit" : "new");
+        setFicha(editable ? toFicha(base.data) : newFicha(data));
       })
       .catch((err) => alive && setLoadError(getErrorMessage(err)));
     return () => {
@@ -201,12 +204,13 @@ const MedicalRecordForm = ({ appointment, isOpen, onClose, onSaved }) => {
                 <Box p={4} borderRadius="xl" borderWidth="1px" borderColor="border.subtle">
                   <RadioGroup value={mode} onChange={changeMode}>
                     <Stack spacing={3}>
-                      <Radio value="edit" alignItems="flex-start">
+                      <Radio value="edit" alignItems="flex-start" isDisabled={!canEditTarget}>
                         <Text fontWeight="600" lineHeight="short">
                           {info.current ? "Editar la ficha de esta consulta" : "Editar la última ficha del paciente"}
                         </Text>
                         <Text fontSize="sm" color="text.muted">
-                          {recordLabel(target)}. Se vuelve a generar su PDF.
+                          {recordLabel(target)}.{" "}
+                          {canEditTarget ? "Se vuelve a generar su PDF." : "La creó otro doctor: puedes consultarla, pero no editarla."}
                         </Text>
                       </Radio>
                       <Radio value="new" alignItems="flex-start">
