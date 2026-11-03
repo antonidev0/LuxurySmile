@@ -1,0 +1,52 @@
+# Despliegue de la demo en Render (Blueprint). Ver "Publicar una demo" en el README.
+# La base de datos no va aquí: se usa una base de Neon aparte, solo para la demo.
+services:
+  # API (Express + Prisma)
+  - type: web
+    name: luxurysmile-api
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: luxuryBackend
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm db:deploy && pnpm preparar-demo
+    startCommand: pnpm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: "1"
+      - key: CLINIC_TIMEZONE
+        value: America/Caracas
+      - key: JWT_SECRET
+        generateValue: true
+      # Connection string de la base de Neon de la demo (nunca la de la clínica real)
+      - key: DATABASE_URL
+        sync: false
+      # Contraseña de las cuentas de demo (mayúscula, minúscula y número, mín. 8)
+      - key: DEMO_PASSWORD
+        sync: false
+      # URL del panel, p. ej. https://luxurysmile-panel.onrender.com
+      - key: CLIENT_ORIGIN
+        sync: false
+
+  # Panel (React + Vite, sitio estático)
+  - type: web
+    name: luxurysmile-panel
+    runtime: static
+    rootDir: luxuryApp
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
+    staticPublishPath: dist
+    routes:
+      # React Router: cualquier ruta (/login, /admin...) sirve index.html
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # URL de la API, p. ej. https://luxurysmile-api.onrender.com
+      - key: VITE_BACKEND_URL
+        sync: false
