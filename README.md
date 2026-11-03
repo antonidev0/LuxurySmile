@@ -70,3 +70,27 @@ pnpm dev                  # abre http://localhost:5173
 | `pnpm db:migrate --name <cambio>` | Crea una migración tras cambiar `prisma/schema.prisma` |
 | `pnpm db:deploy` | Aplica las migraciones pendientes (también en producción) |
 | `pnpm crear-admin` | Crea un administrador, o convierte en admin una cuenta existente |
+| `pnpm citas-prueba [n]` | Crea `n` citas de prueba (100 por defecto); `--borrar` las quita |
+| `pnpm preparar-demo` | Con `DEMO_PASSWORD` definida, crea las cuentas de demo y completa hasta 100 citas de prueba futuras |
+
+## Publicar una demo (Render + Neon, gratis)
+
+La demo usa **su propia base de datos** con datos inventados: nunca pongas aquí la base de la clínica real.
+
+1. **Base de datos:** en [Neon](https://neon.tech) crea un proyecto nuevo (por ejemplo `luxurysmile-demo`) y copia su *connection string*.
+2. **Render:** crea una cuenta en [render.com](https://render.com) con tu GitHub y ve a **New > Blueprint**. Elige el repo `luxurysmile`: Render lee `render.yaml` y propone dos servicios, `luxurysmile-api` y `luxurysmile-panel`.
+3. Rellena las variables que pide:
+   - `DATABASE_URL`: la connection string de Neon del paso 1.
+   - `DEMO_PASSWORD`: la contraseña de las cuentas de demo (mín. 8 caracteres, con mayúscula, minúscula y número).
+   - `CLIENT_ORIGIN`: `https://luxurysmile-panel.onrender.com`
+   - `VITE_BACKEND_URL`: `https://luxurysmile-api.onrender.com`
+
+   Si Render te da otras URLs (porque el nombre ya estaba ocupado), cambia estas dos variables por las reales y vuelve a desplegar.
+4. Pulsa **Apply**. En cada build la API aplica las migraciones y ejecuta `pnpm preparar-demo`, que crea las cuentas y deja siempre 100 citas de prueba futuras.
+
+Cuentas de la demo (todas con `DEMO_PASSWORD`):
+
+- Administrador: `admin@demo.luxurysmile.test`
+- Doctores: `laura@demo.luxurysmile.test`, `andres@demo.luxurysmile.test`, `daniela@demo.luxurysmile.test`
+
+Limitaciones del plan gratis: la API se duerme tras 15 minutos sin visitas (la primera petición tarda ~1 minuto en despertarla), y los PDF subidos se pierden al redesplegar porque el disco no es persistente. Sin `EMAIL_USER`/`EMAIL_PASS` no se envían correos de verificación.

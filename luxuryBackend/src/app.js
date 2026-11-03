@@ -17,6 +17,9 @@ app.use(helmet());
 app.use(cors({ origin: CLIENT_ORIGINS }));
 app.use(express.json());
 
+// Para el health check del hosting (Render comprueba que el servidor responde antes de darle tráfico)
+app.get("/health", (req, res) => res.json({ ok: true }));
+
 // Los historiales PDF no se sirven como estáticos: se descargan con sesión en GET /api/admin/:id/pdf.
 // Las citas solo las crea el personal autenticado: no hay ruta pública de reserva.
 app.use("/api/pdf", pdfRoutes);
