@@ -6,7 +6,7 @@ services:
     name: luxurysmile-api
     runtime: node
     plan: free
-    region: oregon
+    region: ohio  # misma zona que la base de Neon (AWS US East 2)
     rootDir: luxuryBackend
     buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm db:deploy && pnpm preparar-demo
     startCommand: pnpm start
